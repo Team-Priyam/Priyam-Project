@@ -1,35 +1,48 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Helper to generate JWT
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || "default_jwt_secret_key", {
-    expiresIn: "30d",
-  });
+// Helper to generate JWT signed with user ID & role
+const generateToken = (id, role) => {
+  return jwt.sign(
+    { id, role },
+    process.env.JWT_SECRET || "default_jwt_secret_key",
+    { expiresIn: "30d" }
+  );
 };
 
 /**
  * @route   POST /api/auth/login
- * @desc    Authenticate user & get token
+ * @desc    Verify credentials, compare bcrypt password hash & return JWT
  * @access  Public
  */
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
+  // 1. Basic field validation
   if (!email || !password) {
-    return res.status(400).json({ success: false, message: "Please provide email and password" });
+    return res.status(400).json({
+      success: false,
+      message: "Please enter both email and password.",
+    });
   }
 
   try {
-    const user = await User.findOne({ email });
+    // 2. Find user by lowercased email
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
 
+    // 3. Compare password using bcrypt via user schema instance method
     if (user && (await user.comparePassword(password))) {
-      res.json({
+      const token = generateToken(user._id, user.role);
+
+      return res.status(200).json({
         success: true,
-        token: generateToken(user._id),
+        message: "Authentication successful",
+        token,
         user: {
           id: user._id,
           name: user.name,
@@ -37,18 +50,46 @@ router.post("/login", async (req, res) => {
           role: user.role,
         },
       });
-    } else {
-      res.status(401).json({ success: false, message: "Invalid email or password" });
     }
+
+    // 4. Invalid credentials response
+    return res.status(401).json({
+      success: false,
+      message: "Invalid email or password.",
+    });
   } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ success: false, message: "Server error during login" });
+    console.error("Login verification error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error occurred during authentication.",
+    });
+  }
+});
+
+/**
+ * @route   GET /api/auth/me
+ * @desc    Verify current JWT token & return user profile
+ * @access  Private
+ */
+router.get("/me", protect, async (req, res) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      user: {
+        id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        role: req.user.role,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Error fetching user session." });
   }
 });
 
 /**
  * @route   POST /api/auth/bootstrap
- * @desc    Bootstrap the first admin user if the database is empty
+ * @desc    Bootstrap initial admin user if database is empty
  * @access  Public
  */
 router.post("/bootstrap", async (req, res) => {
@@ -62,25 +103,28 @@ router.post("/bootstrap", async (req, res) => {
       });
     }
 
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Please specify name, email, and password for the admin account",
+        message: "Please specify name, email, and password for the admin account.",
       });
     }
 
     const newAdmin = await User.create({
       name,
-      email,
+      email: email.toLowerCase().trim(),
       password,
-      role: "admin",
+      role: role || "admin",
     });
+
+    const token = generateToken(newAdmin._id, newAdmin.role);
 
     res.status(201).json({
       success: true,
-      message: "Admin bootstrapped successfully.",
+      message: "Admin account created successfully.",
+      token,
       user: {
         id: newAdmin._id,
         name: newAdmin.name,
@@ -95,3 +139,4 @@ router.post("/bootstrap", async (req, res) => {
 });
 
 export default router;
+
