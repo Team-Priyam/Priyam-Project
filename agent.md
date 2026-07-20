@@ -39,8 +39,8 @@ graph TD
 | Task | Description | Status | Files Involved |
 | :--- | :--- | :---: | :--- |
 | **Task 1.1** | Create React component for borrower profile form with validation and errors | ✅ Done | `Frontend/src/components/BorrowerForm.jsx` |
-| **Task 1.2** | Implement backend Borrower schema and REST endpoints | ⏳ Pending | `Backend/models/Borrower.js`, `Backend/routes/borrowers.js` |
-| **Task 1.3** | Protect routes with JWT authentication middleware | ⏳ Pending | `Backend/routes/borrowers.js` |
+| **Task 1.2** | Implement backend Borrower schema and REST endpoints | ✅ Done | `Backend/models/Borrower.js`, `Backend/routes/borrowers.js` |
+| **Task 1.3** | Protect routes with JWT authentication middleware | ✅ Done | `Backend/routes/borrowers.js` |
 | **Task 1.4** | Connect Frontend state and tie component submit to protected endpoint | ⏳ Pending | `Frontend/src/App.jsx` |
 | **Task 2** | Implement Repayments Logic & APIs | ⏳ Pending | `Backend/models/Repayment.js`, `Backend/routes/repayments.js` |
 | **Task 3** | Dashboard & Analytics API | ⏳ Pending | `Backend/routes/dashboard.js`, `Backend/server.js` |

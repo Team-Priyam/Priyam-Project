@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import loanRoutes from "./routes/loans.js";
+import borrowerRoutes from "./routes/borrowers.js";
 
 // Load environment variables
 dotenv.config();
@@ -20,6 +21,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/loans", loanRoutes);
+app.use("/api/borrowers", borrowerRoutes);
 
 
 // Base route
