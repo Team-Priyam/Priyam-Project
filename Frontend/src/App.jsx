@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from "react";
 import LoanApplicationForm from "./components/LoanApplicationForm";
+import LoginForm from "./components/LoginForm";
+import { useAuth } from "./context/AuthContext";
 import "./App.css";
 
 function App() {
+  const { user, isAuthenticated, loading: authLoading, login, logout } = useAuth();
+  const [loginError, setLoginError] = useState("");
+  const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
+
   const [activeTab, setActiveTab] = useState("users"); // "users" | "loans" | "review"
   const [loans, setLoans] = useState([]);
   const [pendingLoans, setPendingLoans] = useState([]);
@@ -22,6 +28,17 @@ function App() {
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState({});
   const [notification, setNotification] = useState(null);
+
+  const handleLoginSubmit = async (credentials) => {
+    setIsSubmittingLogin(true);
+    setLoginError("");
+    const result = await login(credentials.email, credentials.password);
+    setIsSubmittingLogin(false);
+    if (!result.success) {
+      setLoginError(result.message);
+    }
+  };
+
 
 
   // Fetch users, loans and pending loans on component mount
@@ -300,11 +317,47 @@ function App() {
 
 
 
+  if (authLoading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", backgroundColor: "#0f172a", color: "#ffffff" }}>
+        <h3>Loading session...</h3>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginForm onLogin={handleLoginSubmit} serverError={loginError} isLoading={isSubmittingLogin} />;
+  }
+
   return (
     <>
-      <header>
-        <h1>Admin Control Panel</h1>
-        <p className="subtitle">Manage user authorization directory, define credentials and roles</p>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h1>Village Microfinance Portal</h1>
+          <p className="subtitle">Lender & Loan Officer Management Panel</p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          {user && (
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontWeight: 600, color: "#ffffff" }}>{user.name}</div>
+              <div style={{ fontSize: "0.8rem", color: "#34d399", textTransform: "capitalize" }}>{user.role}</div>
+            </div>
+          )}
+          <button
+            onClick={logout}
+            style={{
+              padding: "0.5rem 1rem",
+              background: "rgba(239, 68, 68, 0.15)",
+              color: "#fca5a5",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: 500,
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
       </header>
 
       {/* Tabs navigation */}
@@ -318,6 +371,7 @@ function App() {
           </svg>
           <span>Staff Directory</span>
         </button>
+
         <button
           className={`nav-tab-btn ${activeTab === "loans" ? "active" : ""}`}
           onClick={() => setActiveTab("loans")}
