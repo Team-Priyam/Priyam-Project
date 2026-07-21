@@ -213,7 +213,7 @@ router.post("/process-overdue", async (req, res) => {
     // Query repayments with due dates in the past and unpaid status
     const missedRepayments = await Repayment.find({
       dueDate: { $lt: startOfToday },
-      status: { $ne: "paid" },
+      status: "unpaid",
     });
 
     let newlyNotifiedCount = 0;
@@ -318,6 +318,35 @@ router.get("/overdue", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error fetching overdue repayments",
+    });
+  }
+});
+
+/**
+ * @route   GET /api/repayments/missed
+ * @desc    Query repayments with due dates in the past and unpaid status
+ * @access  Public
+ */
+router.get("/missed", async (req, res) => {
+  try {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const missedRepayments = await Repayment.find({
+      dueDate: { $lt: startOfToday },
+      status: "unpaid",
+    }).sort({ dueDate: 1 });
+
+    res.json({
+      success: true,
+      count: missedRepayments.length,
+      repayments: missedRepayments,
+    });
+  } catch (error) {
+    console.error("Fetch missed repayments error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching missed repayments",
     });
   }
 });
