@@ -27,20 +27,21 @@ const LoanApplicationForm = ({ onCancel, onSubmitSuccess }) => {
   // Validate inputs
   const validateField = (name, value) => {
     let error = "";
+    const strVal = value !== null && value !== undefined ? String(value).trim() : "";
     
     switch (name) {
       case "borrower":
-        if (!value.trim()) {
+        if (!strVal) {
           error = "Borrower name is required";
-        } else if (value.trim().length < 3) {
+        } else if (strVal.length < 3) {
           error = "Borrower name must be at least 3 characters long";
         }
         break;
       case "amount":
-        if (value === "" || value === undefined) {
+        if (!strVal) {
           error = "Loan amount is required";
         } else {
-          const numAmount = Number(value);
+          const numAmount = Number(strVal);
           if (isNaN(numAmount)) {
             error = "Amount must be a numeric value";
           } else if (numAmount <= 0) {
@@ -51,10 +52,10 @@ const LoanApplicationForm = ({ onCancel, onSubmitSuccess }) => {
         }
         break;
       case "term":
-        if (value === "" || value === undefined) {
+        if (!strVal) {
           error = "Loan term is required";
         } else {
-          const numTerm = Number(value);
+          const numTerm = Number(strVal);
           if (isNaN(numTerm)) {
             error = "Term must be a numeric value";
           } else if (!Number.isInteger(numTerm) || numTerm <= 0) {
@@ -65,7 +66,7 @@ const LoanApplicationForm = ({ onCancel, onSubmitSuccess }) => {
         }
         break;
       case "purpose":
-        if (!value) {
+        if (!strVal) {
           error = "Please select a loan purpose";
         }
         break;
