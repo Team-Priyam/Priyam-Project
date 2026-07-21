@@ -181,6 +181,13 @@ router.get("/:id", protect, async (req, res) => {
  */
 router.put("/:id", protect, async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid borrower ID format",
+      });
+    }
+
     const { name, village, contactNumber, aadhaarNumber, occupation, status } = req.body;
 
     const borrower = await Borrower.findById(req.params.id);
