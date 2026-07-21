@@ -1,51 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --font-outfit: 'Outfit', sans-serif;
+  --font-inter: 'Inter', sans-serif;
+  
+  /* App-wide palette */
+  --app-bg: #0b0f19;
+  --panel-bg: #1e293b;
+  --accent-color: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.15);
+  --text-main: #f8fafc;
+  --text-muted: #64748b;
+  --border-muted: #334155;
+  --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 body {
- font-family: Arial, sans-serif;
- background: #f2f2f2;
+  margin: 0;
+  font-family: var(--font-inter);
+  background-color: var(--app-bg);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-.container {
- width: 450px;
- margin: 40px auto;
- background: white;
- padding: 25px;
- border-radius: 10px;
+/* Base utility container */
+.app-container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
 }
 
-h1 {
- text-align: center;
-}
-
-form {
- display: flex;
- flex-direction: column;
-}
-
-label {
- margin-top: 10px;
- font-weight: bold;
-}
-
-input {
- padding: 10px;
- margin-top: 5px;
-}
-
-button {
- margin-top: 20px;
- padding: 10px;
- background: blue;
- color: white;
- border: none;
- cursor: pointer;
-}
-
-button:hover {
- background: darkblue;
-}
-
-.card {
- margin-top: 20px;
- padding: 20px;
- background: #eaf4ff;
- border-radius: 10px;
+/* Glass panel */
+.glass-panel {
+  background-color: var(--panel-bg);
+  border: 1px solid var(--border-muted);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--card-shadow);
 }
