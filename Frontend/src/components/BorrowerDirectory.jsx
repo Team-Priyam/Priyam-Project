@@ -8,6 +8,7 @@ const BorrowerDirectory = () => {
   const [borrowers, setBorrowers] = useState([]);
   const [villages, setVillages] = useState([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedVillage, setSelectedVillage] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -18,17 +19,14 @@ const BorrowerDirectory = () => {
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState("table"); // "table" | "card"
 
-  // Modal state for adding a new borrower
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newBorrower, setNewBorrower] = useState({
-    name: "",
-    village: "",
-    contactNumber: "",
-    occupation: "Farmer",
-    aadhaarNumber: "",
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [modalError, setModalError] = useState("");
+  // Debounce search input changes by 300ms before sending API request
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Fetch village options for filter dropdown
   const fetchVillages = useCallback(async () => {
@@ -58,7 +56,7 @@ const BorrowerDirectory = () => {
       const queryParams = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
-        search: search.trim(),
+        search: debouncedSearch.trim(),
         village: selectedVillage,
       });
 
@@ -87,7 +85,7 @@ const BorrowerDirectory = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, page, limit, search, selectedVillage, logout]);
+  }, [token, page, limit, debouncedSearch, selectedVillage, logout]);
 
   useEffect(() => {
     fetchVillages();
@@ -100,7 +98,6 @@ const BorrowerDirectory = () => {
   // Reset to page 1 whenever search query or village filter changes
   const handleSearchChange = (e) => {
     setSearch(e.target.value);
-    setPage(1);
   };
 
   const handleVillageChange = (e) => {
