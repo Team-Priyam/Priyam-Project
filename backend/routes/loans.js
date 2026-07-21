@@ -112,7 +112,7 @@ router.get("/pending", async (req, res) => {
 
 /**
  * @route   POST /api/loans/:id/approve
- * @desc    Approve a pending loan application
+ * @desc    Approve a pending loan application, update status to 'approved', and log timestamp/user
  * @access  Public
  */
 router.post("/:id/approve", async (req, res) => {
@@ -133,13 +133,17 @@ router.post("/:id/approve", async (req, res) => {
       });
     }
 
+    const evaluatorUser = user && user.trim() ? user.trim() : "Loan Officer";
+    const auditNote = note && note.trim() ? note.trim() : `Loan application approved by ${evaluatorUser}`;
+    const timestamp = new Date();
+
     loan.status = "approved";
     loan.statusHistory.push({
       status: "approved",
       action: "approved",
-      timestamp: new Date(),
-      user: user || "Loan Officer",
-      note: note || "Loan application approved by loan officer",
+      timestamp,
+      user: evaluatorUser,
+      note: auditNote,
     });
 
     await loan.save();
@@ -160,7 +164,7 @@ router.post("/:id/approve", async (req, res) => {
 
 /**
  * @route   POST /api/loans/:id/reject
- * @desc    Reject a pending loan application
+ * @desc    Reject a pending loan application, update status to 'rejected', and log timestamp/user
  * @access  Public
  */
 router.post("/:id/reject", async (req, res) => {
@@ -181,13 +185,17 @@ router.post("/:id/reject", async (req, res) => {
       });
     }
 
+    const evaluatorUser = user && user.trim() ? user.trim() : "Loan Officer";
+    const auditNote = note && note.trim() ? note.trim() : `Loan application rejected by ${evaluatorUser}`;
+    const timestamp = new Date();
+
     loan.status = "rejected";
     loan.statusHistory.push({
       status: "rejected",
       action: "rejected",
-      timestamp: new Date(),
-      user: user || "Loan Officer",
-      note: note || "Loan application rejected by loan officer",
+      timestamp,
+      user: evaluatorUser,
+      note: auditNote,
     });
 
     await loan.save();
