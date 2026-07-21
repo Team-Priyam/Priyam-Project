@@ -310,7 +310,11 @@ const LoanApplicationForm = ({ onCancel, onSubmitSuccess }) => {
 
         {/* Status Notifications Panel */}
         {submitStatus && (
-          <div className={`form-status-banner status-${submitStatus}`}>
+          <div
+            className={`form-status-banner status-${submitStatus}`}
+            role="alert"
+            aria-live="polite"
+          >
             {submitStatus === "success" ? (
               <svg className="status-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -321,6 +325,18 @@ const LoanApplicationForm = ({ onCancel, onSubmitSuccess }) => {
               </svg>
             )}
             <span className="status-text">{statusMessage}</span>
+            <button
+              type="button"
+              className="status-dismiss-btn"
+              onClick={() => {
+                setSubmitStatus(null);
+                setStatusMessage("");
+              }}
+              title="Dismiss notification"
+              aria-label="Dismiss notification"
+            >
+              &times;
+            </button>
           </div>
         )}
 
