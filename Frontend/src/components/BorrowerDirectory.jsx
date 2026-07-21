@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
+import EditBorrowerForm from "./EditBorrowerForm";
 import "./BorrowerDirectory.css";
 
 const BorrowerDirectory = () => {
@@ -18,6 +19,33 @@ const BorrowerDirectory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState("table"); // "table" | "card"
+
+  // Modal states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newBorrower, setNewBorrower] = useState({
+    name: "",
+    village: "",
+    contactNumber: "",
+    occupation: "Farmer",
+    aadhaarNumber: "",
+  });
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editBorrower, setEditBorrower] = useState({
+    _id: "",
+    name: "",
+    village: "",
+    contactNumber: "",
+    occupation: "",
+    aadhaarNumber: "",
+    status: "active",
+  });
+
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [auditBorrower, setAuditBorrower] = useState(null);
+
+  const [modalError, setModalError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Debounce search input changes by 300ms before sending API request
   useEffect(() => {
@@ -121,8 +149,13 @@ const BorrowerDirectory = () => {
     e.preventDefault();
     setModalError("");
 
-    if (!newBorrower.name.trim() || !newBorrower.village.trim()) {
-      setModalError("Borrower Full Name and Village/Location are required.");
+    if (!newBorrower.name || !newBorrower.name.trim()) {
+      setModalError("Borrower Full Name is required.");
+      return;
+    }
+
+    if (!newBorrower.village || !newBorrower.village.trim()) {
+      setModalError("Village / Location is required.");
       return;
     }
 
@@ -153,6 +186,80 @@ const BorrowerDirectory = () => {
     }
   };
 
+  // Pre-fill Edit Modal with selected Borrower profile data
+  const handleOpenEditModal = (borrower) => {
+    setEditBorrower({
+      _id: borrower._id,
+      name: borrower.name || "",
+      village: borrower.village || "",
+      contactNumber: borrower.contactNumber || "",
+      occupation: borrower.occupation || "",
+      aadhaarNumber: borrower.aadhaarNumber || "",
+      status: borrower.status || "active",
+    });
+    setModalError("");
+    setShowEditModal(true);
+  };
+
+  // Handle Edit Borrower submission with client-side validation & immediate UI update
+  const handleEditBorrowerSubmit = async (e) => {
+    e.preventDefault();
+    setModalError("");
+
+    // Client-side validation: Required fields must not be empty or whitespace only
+    if (!editBorrower.name || !editBorrower.name.trim()) {
+      setModalError("Validation Error: Borrower Full Name is required.");
+      return;
+    }
+
+    if (!editBorrower.village || !editBorrower.village.trim()) {
+      setModalError("Validation Error: Village / Location is required.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/borrowers/${editBorrower._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: editBorrower.name.trim(),
+          village: editBorrower.village.trim(),
+          contactNumber: editBorrower.contactNumber ? editBorrower.contactNumber.trim() : "",
+          occupation: editBorrower.occupation ? editBorrower.occupation.trim() : "",
+          aadhaarNumber: editBorrower.aadhaarNumber ? editBorrower.aadhaarNumber.trim() : "",
+          status: editBorrower.status,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to update borrower profile.");
+      }
+
+      // Save to backend and reflect immediately in local UI state
+      setBorrowers((prev) =>
+        prev.map((item) => (item._id === data.borrower._id ? data.borrower : item))
+      );
+
+      setShowEditModal(false);
+      fetchVillages();
+    } catch (err) {
+      setModalError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // View Audit Trail modal handler
+  const handleOpenAuditModal = (borrower) => {
+    setAuditBorrower(borrower);
+    setShowAuditModal(true);
+  };
+
   // Pagination calculation
   const startItem = totalCount === 0 ? 0 : (page - 1) * limit + 1;
   const endItem = Math.min(page * limit, totalCount);
@@ -170,7 +277,7 @@ const BorrowerDirectory = () => {
               Borrower Directory
             </h2>
             <p className="subtitle" style={{ marginBottom: 0, fontSize: "0.95rem" }}>
-              View and filter registered village borrowers with active loan histories
+              View, edit, and audit registered village borrowers with active loan histories
             </p>
           </div>
 
@@ -204,7 +311,10 @@ const BorrowerDirectory = () => {
             <button
               type="button"
               className="btn-add-borrower"
-              onClick={() => setShowAddModal(true)}
+              onClick={() => {
+                setModalError("");
+                setShowAddModal(true);
+              }}
             >
               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -325,6 +435,7 @@ const BorrowerDirectory = () => {
                   <th>Occupation</th>
                   <th>Loans & Borrowed</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -369,6 +480,32 @@ const BorrowerDirectory = () => {
                       <span className={`badge badge-${b.status === "active" ? "approved" : "rejected"}`}>
                         {b.status ? b.status.charAt(0).toUpperCase() + b.status.slice(1) : "Active"}
                       </span>
+                    </td>
+                    <td>
+                      <div className="action-btn-group">
+                        <button
+                          type="button"
+                          className="btn-edit-action"
+                          onClick={() => handleOpenEditModal(b)}
+                          title="Edit Borrower Profile"
+                        >
+                          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="14" height="14">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-audit-action"
+                          onClick={() => handleOpenAuditModal(b)}
+                          title="View Audit History"
+                        >
+                          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="14" height="14">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Audit ({b.auditTrail ? b.auditTrail.length : 0})
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -453,6 +590,29 @@ const BorrowerDirectory = () => {
                     <span className="info-val" style={{ color: "#34d399", fontWeight: 600 }}>
                       ${Number(b.totalBorrowed || 0).toLocaleString()} ({b.totalLoans || 0} loans)
                     </span>
+                  </div>
+
+                  <div className="action-btn-group" style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid var(--border-color)", justifyContent: "flex-end" }}>
+                    <button
+                      type="button"
+                      className="btn-edit-action"
+                      onClick={() => handleOpenEditModal(b)}
+                    >
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="14" height="14">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Edit Profile
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-audit-action"
+                      onClick={() => handleOpenAuditModal(b)}
+                    >
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="14" height="14">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Audit ({b.auditTrail ? b.auditTrail.length : 0})
+                    </button>
                   </div>
                 </div>
               </div>
@@ -591,6 +751,86 @@ const BorrowerDirectory = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal for Pre-filled Editing of an Existing Borrower (Task 1) */}
+      {showEditModal && editBorrower && editBorrower._id && (
+        <EditBorrowerForm
+          borrowerId={editBorrower._id}
+          token={token}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={(updatedBorrower) => {
+            setBorrowers((prev) =>
+              prev.map((item) => (item._id === updatedBorrower._id ? updatedBorrower : item))
+            );
+            fetchVillages();
+          }}
+        />
+      )}
+
+      {/* Modal for Viewing Borrower Audit Trail History */}
+      {showAuditModal && auditBorrower && (
+        <div className="modal-overlay" onClick={() => setShowAuditModal(false)}>
+          <div className="modal-card glass-card" style={{ maxWidth: "560px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>Audit Trail & Edit Logs</h3>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", margin: 0 }}>
+                  Profile update history for <strong>{auditBorrower.name}</strong> ({auditBorrower.village})
+                </p>
+              </div>
+              <button className="btn-close" onClick={() => setShowAuditModal(false)}>&times;</button>
+            </div>
+
+            {!auditBorrower.auditTrail || auditBorrower.auditTrail.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "2rem 1rem", color: "var(--text-secondary)" }}>
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="36" height="36" style={{ margin: "0 auto 0.5rem", opacity: 0.5 }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p>No edit history recorded yet for this borrower profile.</p>
+              </div>
+            ) : (
+              <div className="audit-timeline">
+                {auditBorrower.auditTrail.slice().reverse().map((log, index) => (
+                  <div key={index} className="audit-item">
+                    <div className="audit-meta">
+                      <span className="audit-user">
+                        Modified by: {log.updatedByName || "Authorized User"}
+                      </span>
+                      <span className="audit-time">
+                        {new Date(log.timestamp).toLocaleString("en-US", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </span>
+                    </div>
+                    <div className="audit-fields-list">
+                      {log.updatedFields && log.updatedFields.length > 0 ? (
+                        log.updatedFields.map((field, fIdx) => (
+                          <div key={fIdx} className="audit-field-tag">
+                            &bull; {field}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="audit-field-tag">&bull; Profile details updated</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="modal-actions" style={{ marginTop: "1.5rem" }}>
+              <button
+                type="button"
+                className="btn-cancel"
+                onClick={() => setShowAuditModal(false)}
+              >
+                Close Audit View
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -80,6 +80,11 @@ const LoginForm = ({ onLogin, serverError, isLoading }) => {
           <span className="login-badge">Microfinance Portal</span>
           <h2>Lender Sign In</h2>
           <p>Enter your credentials to access the village loan portal</p>
+          <div style={{ marginTop: "0.75rem", padding: "0.5rem 0.75rem", background: "rgba(99, 102, 241, 0.12)", border: "1px solid rgba(99, 102, 241, 0.25)", borderRadius: "8px", fontSize: "0.8rem", color: "#a5b4fc" }}>
+            🔑 <strong>Demo Credentials (.env):</strong><br />
+            Email: <code>admin@microfinance.org</code><br />
+            Password: <code>Admin123Pass!</code>
+          </div>
         </div>
 
         {serverError && (

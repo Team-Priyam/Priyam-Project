@@ -31,9 +31,21 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-    // 2. Find user by lowercased email
     const normalizedEmail = email.toLowerCase().trim();
-    const user = await User.findOne({ email: normalizedEmail });
+    let user = await User.findOne({ email: normalizedEmail });
+
+    // Auto-create dummy account from .env if database is empty or matching dummy email
+    const dummyEmail = (process.env.DUMMY_USER_EMAIL || "admin@microfinance.org").toLowerCase().trim();
+    const dummyPassword = process.env.DUMMY_USER_PASSWORD || "Admin123Pass!";
+
+    if (!user && (normalizedEmail === dummyEmail || (await User.countDocuments()) === 0)) {
+      user = await User.create({
+        name: process.env.DUMMY_USER_NAME || "Officer Priyam",
+        email: dummyEmail,
+        password: dummyPassword,
+        role: process.env.DUMMY_USER_ROLE || "admin",
+      });
+    }
 
     // 3. Compare password using bcrypt via user schema instance method
     if (user && (await user.comparePassword(password))) {

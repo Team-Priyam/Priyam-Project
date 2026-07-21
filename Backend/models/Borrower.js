@@ -48,6 +48,23 @@ const borrowerSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    auditTrail: [
+      {
+        updatedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        updatedByName: {
+          type: String,
+          default: "System User",
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+        updatedFields: [String],
+      },
+    ],
   },
   {
     timestamps: true,

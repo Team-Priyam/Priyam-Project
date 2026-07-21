@@ -147,4 +147,135 @@ router.post("/", protect, async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/borrowers/:id
+ * @desc    Get single borrower profile details by ID
+ * @access  Private (Authorized users only)
+ */
+router.get("/:id", protect, async (req, res) => {
+  try {
+    const borrower = await Borrower.findById(req.params.id);
+    if (!borrower) {
+      return res.status(404).json({
+        success: false,
+        message: "Borrower profile not found",
+      });
+    }
+    res.json({
+      success: true,
+      borrower,
+    });
+  } catch (error) {
+    console.error("Get borrower profile error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching borrower profile",
+    });
+  }
+});
+
+/**
+ * @route   PUT /api/borrowers/:id
+ * @desc    Update an existing borrower profile with validation & audit trail logging
+ * @access  Private (Authorized users only)
+ */
+router.put("/:id", protect, async (req, res) => {
+  try {
+    const { name, village, contactNumber, aadhaarNumber, occupation, status } = req.body;
+
+    const borrower = await Borrower.findById(req.params.id);
+    if (!borrower) {
+      return res.status(404).json({
+        success: false,
+        message: "Borrower profile not found",
+      });
+    }
+
+    // Server-side validation rules
+    if (name !== undefined && (!name || !name.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: "Borrower name cannot be empty",
+      });
+    }
+
+    if (village !== undefined && (!village || !village.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: "Village/Location cannot be empty",
+      });
+    }
+
+    if (status !== undefined && !["active", "inactive"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status. Allowed values are 'active' or 'inactive'",
+      });
+    }
+
+    // Track updated fields for audit trail logging
+    const updatedFields = [];
+
+    if (name !== undefined && name.trim() !== borrower.name) {
+      updatedFields.push(`Name ("${borrower.name}" -> "${name.trim()}")`);
+      borrower.name = name.trim();
+    }
+
+    if (village !== undefined && village.trim() !== borrower.village) {
+      updatedFields.push(`Village ("${borrower.village}" -> "${village.trim()}")`);
+      borrower.village = village.trim();
+    }
+
+    if (contactNumber !== undefined && (contactNumber.trim() !== (borrower.contactNumber || ""))) {
+      updatedFields.push(`Contact ("${borrower.contactNumber || "N/A"}" -> "${contactNumber.trim() || "N/A"}")`);
+      borrower.contactNumber = contactNumber.trim();
+    }
+
+    if (aadhaarNumber !== undefined && (aadhaarNumber.trim() !== (borrower.aadhaarNumber || ""))) {
+      updatedFields.push(`Aadhaar ("${borrower.aadhaarNumber || "N/A"}" -> "${aadhaarNumber.trim() || "N/A"}")`);
+      borrower.aadhaarNumber = aadhaarNumber.trim();
+    }
+
+    if (occupation !== undefined && (occupation.trim() !== (borrower.occupation || ""))) {
+      updatedFields.push(`Occupation ("${borrower.occupation || "N/A"}" -> "${occupation.trim() || "N/A"}")`);
+      borrower.occupation = occupation.trim();
+    }
+
+    if (status !== undefined && status !== borrower.status) {
+      updatedFields.push(`Status ("${borrower.status}" -> "${status}")`);
+      borrower.status = status;
+    }
+
+    // Add audit log entry if any field changed
+    if (updatedFields.length > 0) {
+      if (!borrower.auditTrail) {
+        borrower.auditTrail = [];
+      }
+
+      const userName = req.user ? (req.user.name || req.user.email || "Authorized User") : "Authorized User";
+
+      borrower.auditTrail.push({
+        updatedBy: req.user ? req.user._id : null,
+        updatedByName: userName,
+        timestamp: new Date(),
+        updatedFields: updatedFields,
+      });
+    }
+
+    await borrower.save();
+
+    res.json({
+      success: true,
+      message: "Borrower profile updated successfully",
+      borrower,
+    });
+  } catch (error) {
+    console.error("Update borrower error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Server error updating borrower profile",
+    });
+  }
+});
+
 export default router;
