@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import LoanApplicationForm from "./components/LoanApplicationForm";
 import LoginForm from "./components/LoginForm";
+import BorrowerDirectory from "./components/BorrowerDirectory";
 import { useAuth } from "./context/AuthContext";
 import "./App.css";
 
@@ -9,7 +10,7 @@ function App() {
   const [loginError, setLoginError] = useState("");
   const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
 
-  const [activeTab, setActiveTab] = useState("users"); // "users" | "loans" | "review"
+  const [activeTab, setActiveTab] = useState("borrowers"); // "borrowers" | "users" | "loans" | "review"
   const [loans, setLoans] = useState([]);
   const [pendingLoans, setPendingLoans] = useState([]);
   const [selectedLoan, setSelectedLoan] = useState(null);
@@ -363,6 +364,16 @@ function App() {
       {/* Tabs navigation */}
       <div className="navigation-tabs">
         <button
+          className={`nav-tab-btn ${activeTab === "borrowers" ? "active" : ""}`}
+          onClick={() => setActiveTab("borrowers")}
+        >
+          <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <span>Borrower Directory</span>
+        </button>
+
+        <button
           className={`nav-tab-btn ${activeTab === "users" ? "active" : ""}`}
           onClick={() => setActiveTab("users")}
         >
@@ -392,7 +403,9 @@ function App() {
         </button>
       </div>
 
-      {activeTab === "users" ? (
+      {activeTab === "borrowers" ? (
+        <BorrowerDirectory />
+      ) : activeTab === "users" ? (
         /* Metrics Banner - Users */
         <div className="stats-bar">
           <div className="stat-card">
