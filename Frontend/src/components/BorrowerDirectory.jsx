@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import "./BorrowerDirectory.css";
 
 const BorrowerDirectory = () => {
-  const { token, logout } = useAuth();
+  const { token, isAuthenticated, logout } = useAuth();
 
   const [borrowers, setBorrowers] = useState([]);
   const [villages, setVillages] = useState([]);
@@ -30,7 +30,7 @@ const BorrowerDirectory = () => {
 
   // Fetch village options for filter dropdown
   const fetchVillages = useCallback(async () => {
-    if (!token) return;
+    if (!token || !isAuthenticated) return;
     try {
       const res = await fetch("/api/borrowers/villages", {
         headers: {
@@ -44,11 +44,17 @@ const BorrowerDirectory = () => {
     } catch (err) {
       console.error("Failed to fetch villages:", err);
     }
-  }, [token]);
+  }, [token, isAuthenticated]);
 
   // Fetch borrowers with pagination, search, and village filter
   const fetchBorrowers = useCallback(async () => {
-    if (!token) return;
+    // Check JWT token authorization before attempting fetch request
+    if (!token || !isAuthenticated) {
+      setError("Unauthorized access. Valid JWT authorization token required.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -66,9 +72,9 @@ const BorrowerDirectory = () => {
         },
       });
 
-      if (res.status === 401) {
+      if (res.status === 401 || res.status === 403) {
         logout();
-        throw new Error("Session expired. Please sign in again.");
+        throw new Error("Access Denied: Session expired or invalid authorization token. Please sign in again.");
       }
 
       if (!res.ok) {
@@ -85,7 +91,7 @@ const BorrowerDirectory = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, page, limit, debouncedSearch, selectedVillage, logout]);
+  }, [token, isAuthenticated, page, limit, debouncedSearch, selectedVillage, logout]);
 
   useEffect(() => {
     fetchVillages();
