@@ -110,7 +110,7 @@ export const sendOverdueNotification = async ({
   dueDate,
   daysOverdue,
 }) => {
-  const formattedDueDate = new Date(dueDate).toLocaleDateString(undefined, {
+  const formattedDueDate = new Date(dueDate).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -119,12 +119,17 @@ export const sendOverdueNotification = async ({
   const subjectBorrower = `🚨 [OVERDUE ALERT] Action Required: Loan Repayment for ${borrowerName} is Past Due`;
   const subjectLender = `⚠️ [OVERDUE NOTICE] Borrower ${borrowerName} Loan Repayment is Past Due`;
 
+  // Prepared notification messages for borrower and lender
+  const borrowerMessage = `Dear ${borrowerName}, your scheduled loan repayment of $${Number(amountDue).toLocaleString()} due on ${formattedDueDate} is now ${daysOverdue} day(s) overdue. Please process payment immediately.`;
+  const lenderMessage = `Loan Officer Alert: Borrower ${borrowerName} has an overdue repayment balance of $${Number(amountDue).toLocaleString()} (${daysOverdue} day(s) overdue, original due date: ${formattedDueDate}).`;
+
   console.log("\n========================================================");
   console.log("🚨 OVERDUE NOTIFICATION DISPATCHED TO BOTH PARTIES");
   console.log("--------------------------------------------------------");
   console.log(`[BORROWER NOTIFICATION]`);
   console.log(`To:          ${borrowerName} <${borrowerEmail}>`);
   console.log(`Subject:     ${subjectBorrower}`);
+  console.log(`Message:     ${borrowerMessage}`);
   console.log(`Status:      OVERDUE (${daysOverdue} Days Past Due)`);
   console.log(`Amount Due:  $${Number(amountDue).toLocaleString()}`);
   console.log(`Due Date:    ${formattedDueDate}`);
@@ -132,6 +137,7 @@ export const sendOverdueNotification = async ({
   console.log(`[LENDER NOTIFICATION]`);
   console.log(`To:          ${lenderName} <${lenderEmail}>`);
   console.log(`Subject:     ${subjectLender}`);
+  console.log(`Message:     ${lenderMessage}`);
   console.log(`Status:      OVERDUE AUDIT ALERT`);
   console.log(`Borrower:    ${borrowerName}`);
   console.log(`Amount Due:  $${Number(amountDue).toLocaleString()}`);
@@ -141,6 +147,8 @@ export const sendOverdueNotification = async ({
     success: true,
     borrowerNotified: borrowerEmail,
     lenderNotified: lenderEmail,
+    borrowerMessage,
+    lenderMessage,
     status: "overdue",
     sentAt: new Date(),
   };
