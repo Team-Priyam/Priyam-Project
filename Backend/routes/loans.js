@@ -70,14 +70,45 @@ router.post("/", async (req, res) => {
 
 /**
  * @route   GET /api/loans
- * @desc    Get all loan applications list
+ * @desc    Get loan applications list with search, status, and date range filter capabilities
  * @access  Public
  */
 router.get("/", async (req, res) => {
   try {
-    const loans = await Loan.find({}).sort({ createdAt: -1 });
+    const { search = "", status = "", startDate = "", endDate = "" } = req.query;
+
+    const query = {};
+
+    // Search by borrower name (case-insensitive regex)
+    if (search.trim()) {
+      const escapedSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      query.borrower = { $regex: escapedSearch, $options: "i" };
+    }
+
+    // Filter by status (pending, approved, rejected)
+    if (status.trim() && ["pending", "approved", "rejected"].includes(status.trim())) {
+      query.status = status.trim();
+    }
+
+    // Filter by application date range (createdAt)
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        query.createdAt.$gte = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
+
+    const loans = await Loan.find(query).sort({ createdAt: -1 });
     res.json({
       success: true,
+      count: loans.length,
       loans,
     });
   } catch (error) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import LoanApplicationForm from "./components/LoanApplicationForm";
 import LoginForm from "./components/LoginForm";
 import BorrowerDirectory from "./components/BorrowerDirectory";
@@ -35,6 +35,43 @@ function App() {
   const [loanStatusFilter, setLoanStatusFilter] = useState("");
   const [loanStartDate, setLoanStartDate] = useState("");
   const [loanEndDate, setLoanEndDate] = useState("");
+
+  // Real-time filtering of loan applications based on user inputs (borrower, status, date range)
+  const filteredLoans = useMemo(() => {
+    return loans.filter((loan) => {
+      // 1. Filter by borrower name substring (case-insensitive)
+      if (loanSearch.trim()) {
+        const searchLower = loanSearch.trim().toLowerCase();
+        if (!loan.borrower || !loan.borrower.toLowerCase().includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // 2. Filter by status (pending, approved, rejected)
+      if (loanStatusFilter) {
+        if (loan.status !== loanStatusFilter) {
+          return false;
+        }
+      }
+
+      // 3. Filter by date range (createdAt start & end dates)
+      if (loanStartDate || loanEndDate) {
+        const loanDate = new Date(loan.createdAt);
+        if (loanStartDate) {
+          const start = new Date(loanStartDate);
+          start.setHours(0, 0, 0, 0);
+          if (loanDate < start) return false;
+        }
+        if (loanEndDate) {
+          const end = new Date(loanEndDate);
+          end.setHours(23, 59, 59, 999);
+          if (loanDate > end) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [loans, loanSearch, loanStatusFilter, loanStartDate, loanEndDate]);
 
   const handleLoginSubmit = async (credentials) => {
     setIsSubmittingLogin(true);
@@ -849,13 +886,17 @@ function App() {
               )}
             </div>
 
-            {loans.length === 0 ? (
+            {filteredLoans.length === 0 ? (
               <div className="empty-state">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <h3>No applications found</h3>
-                <p>Submit the first loan application using the submission form on the left.</p>
+                <p>
+                  {loanSearch || loanStatusFilter || loanStartDate || loanEndDate
+                    ? "No loan applications match your active search or filter criteria."
+                    : "Submit the first loan application using the submission form on the left."}
+                </p>
               </div>
             ) : (
               <div className="table-container">
@@ -870,7 +911,7 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {loans.map((loan) => (
+                    {filteredLoans.map((loan) => (
                       <tr key={loan._id}>
                         <td>
                           <div className="user-name-cell">
