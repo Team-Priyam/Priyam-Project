@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import EditBorrowerForm from "./EditBorrowerForm";
+import RepaymentHistoryModal from "./RepaymentHistoryModal";
 import "./BorrowerDirectory.css";
 
 const BorrowerDirectory = () => {
@@ -43,6 +44,9 @@ const BorrowerDirectory = () => {
 
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [auditBorrower, setAuditBorrower] = useState(null);
+
+  const [showRepaymentModal, setShowRepaymentModal] = useState(false);
+  const [repaymentBorrower, setRepaymentBorrower] = useState(null);
 
   const [modalError, setModalError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -496,6 +500,21 @@ const BorrowerDirectory = () => {
                         </button>
                         <button
                           type="button"
+                          className="btn-edit-action"
+                          style={{ background: "rgba(16, 185, 129, 0.15)", color: "#34d399", borderColor: "rgba(16, 185, 129, 0.3)" }}
+                          onClick={() => {
+                            setRepaymentBorrower(b);
+                            setShowRepaymentModal(true);
+                          }}
+                          title="View Repayment History"
+                        >
+                          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="14" height="14">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M12 16V5" />
+                          </svg>
+                          Repayments
+                        </button>
+                        <button
+                          type="button"
                           className="btn-audit-action"
                           onClick={() => handleOpenAuditModal(b)}
                           title="View Audit History"
@@ -602,6 +621,20 @@ const BorrowerDirectory = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                       Edit Profile
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-edit-action"
+                      style={{ background: "rgba(16, 185, 129, 0.15)", color: "#34d399", borderColor: "rgba(16, 185, 129, 0.3)" }}
+                      onClick={() => {
+                        setRepaymentBorrower(b);
+                        setShowRepaymentModal(true);
+                      }}
+                    >
+                      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="14" height="14">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M12 16V5" />
+                      </svg>
+                      Repayments
                     </button>
                     <button
                       type="button"
@@ -833,6 +866,15 @@ const BorrowerDirectory = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal for Viewing Borrower Repayment History (Task 3) */}
+      {showRepaymentModal && repaymentBorrower && (
+        <RepaymentHistoryModal
+          borrower={repaymentBorrower}
+          token={token}
+          onClose={() => setShowRepaymentModal(false)}
+        />
       )}
     </div>
   );
