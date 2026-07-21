@@ -39,7 +39,7 @@ router.get("/villages", protect, async (req, res) => {
  */
 router.get("/", protect, async (req, res) => {
   try {
-    let { page = 1, limit = 10, search = "", village = "" } = req.query;
+    let { page = 1, limit = 10, search = "", village = "", location = "" } = req.query;
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 10));
@@ -52,8 +52,9 @@ router.get("/", protect, async (req, res) => {
       query.name = { $regex: sanitizedSearch, $options: "i" };
     }
 
-    if (village.trim()) {
-      const sanitizedVillage = escapeRegex(village.trim());
+    const selectedLocation = (village || location).trim();
+    if (selectedLocation) {
+      const sanitizedVillage = escapeRegex(selectedLocation);
       query.village = { $regex: `^${sanitizedVillage}$`, $options: "i" };
     }
 
