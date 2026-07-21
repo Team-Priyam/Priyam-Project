@@ -120,9 +120,18 @@ function App() {
     }
   };
 
-  const fetchLoans = async () => {
+  const fetchLoans = useCallback(async () => {
     try {
-      const res = await fetch("/api/loans");
+      const queryParams = new URLSearchParams();
+      if (loanSearch.trim()) queryParams.append("search", loanSearch.trim());
+      if (loanStatusFilter) queryParams.append("status", loanStatusFilter);
+      if (loanStartDate) queryParams.append("startDate", loanStartDate);
+      if (loanEndDate) queryParams.append("endDate", loanEndDate);
+
+      const queryString = queryParams.toString();
+      const url = queryString ? `/api/loans?${queryString}` : "/api/loans";
+
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setLoans(data.loans || []);
@@ -132,7 +141,15 @@ function App() {
     } catch (err) {
       showNotification("error", "Could not connect to the backend server to fetch loans.");
     }
-  };
+  }, [loanSearch, loanStatusFilter, loanStartDate, loanEndDate]);
+
+  // Automatically trigger debounced API fetch when filter controls change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchLoans();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [fetchLoans]);
 
   const fetchPendingLoans = async () => {
     try {
