@@ -1,0 +1,11 @@
+{
+  "name": "priyam-project",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "npx concurrently \"npm --prefix backend run dev\" \"npm --prefix Frontend run dev\"",
+    "dev": "npx concurrently \"npm --prefix backend run dev\" \"npm --prefix Frontend run dev\"",
+    "backend": "npm --prefix backend run dev",
+    "frontend": "npm --prefix Frontend run dev"
+  }
+}

@@ -325,31 +325,33 @@ function UpcomingRepayments({ showNotification }) {
                 {filteredRepayments.map((item) => {
                   const info = getDaysRemainingInfo(item.dueDate);
                   return (
-                    <tr key={item._id}>
-                      <td>
+                    <tr key={item._id} className="repayment-entry-row">
+                      <td className="borrower-cell">
                         <div className="user-name-cell">
                           <div className="user-avatar" style={{ background: "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)" }}>
                             {item.borrower.charAt(0).toUpperCase()}
                           </div>
                           <div className="user-details">
-                            <span style={{ fontWeight: 600 }}>{item.borrower}</span>
-                            <span className="user-email">ID: {item._id.slice(-6)}</span>
+                            <span className="borrower-name-title" style={{ fontWeight: 600 }}>{item.borrower}</span>
+                            <span className="user-email">ID: {item._id ? item._id.slice(-6) : "N/A"}</span>
                           </div>
                         </div>
                       </td>
-                      <td>
-                        <span style={{ fontWeight: 700, fontSize: "1.05rem", color: "var(--text-primary)" }}>
-                          ${Number(item.amountDue).toLocaleString()}
+                      <td className="amount-cell">
+                        <span className="amount-due-val" style={{ fontWeight: 700, fontSize: "1.05rem", color: "#34d399" }}>
+                          ${Number(item.amountDue || 0).toLocaleString()}
                         </span>
                       </td>
-                      <td>
-                        <span style={{ fontWeight: 500 }}>
-                          {new Date(item.dueDate).toLocaleDateString(undefined, {
-                            weekday: "short",
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
+                      <td className="date-cell">
+                        <span className="due-date-val" style={{ fontWeight: 500 }}>
+                          {item.dueDate
+                            ? new Date(item.dueDate).toLocaleDateString("en-US", {
+                                weekday: "short",
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "N/A"}
                         </span>
                       </td>
                       <td>
@@ -427,6 +429,8 @@ function UpcomingRepayments({ showNotification }) {
                 </div>
                 <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.4rem" }}>
                   Sent At: {new Date(notif.createdAt).toLocaleString()} | Target Email: {notif.recipientEmail}
+                  {notif.amountDue ? ` | Amount: $${Number(notif.amountDue).toLocaleString()}` : ""}
+                  {notif.dueDate ? ` | Due Date: ${new Date(notif.dueDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}` : ""}
                 </div>
               </div>
             ))}
