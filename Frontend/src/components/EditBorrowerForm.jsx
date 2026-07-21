@@ -13,6 +13,7 @@ const EditBorrowerForm = ({ borrowerId, token, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Task 1 Requirement: Fetch borrower data by ID and pre-fill form fields
   useEffect(() => {
@@ -78,6 +79,7 @@ const EditBorrowerForm = ({ borrowerId, token, onClose, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccessMessage("");
 
     if (!formData.name.trim()) {
       setError("Borrower Full Name is required.");
@@ -112,12 +114,16 @@ const EditBorrowerForm = ({ borrowerId, token, onClose, onSuccess }) => {
         throw new Error(data.message || "Failed to update borrower profile");
       }
 
-      if (onSuccess) {
-        onSuccess(data.borrower);
-      }
-      if (onClose) {
-        onClose();
-      }
+      setSuccessMessage(data.message || "Borrower profile updated successfully!");
+
+      setTimeout(() => {
+        if (onSuccess) {
+          onSuccess(data.borrower);
+        }
+        if (onClose) {
+          onClose();
+        }
+      }, 500);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -144,6 +150,12 @@ const EditBorrowerForm = ({ borrowerId, token, onClose, onSuccess }) => {
           </div>
         ) : (
           <>
+            {successMessage && (
+              <div className="alert alert-success" style={{ marginBottom: "1rem" }}>
+                <span>{successMessage}</span>
+              </div>
+            )}
+
             {error && (
               <div className="alert alert-error" style={{ marginBottom: "1rem" }}>
                 <span>{error}</span>
