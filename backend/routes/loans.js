@@ -245,6 +245,35 @@ router.delete("/:id", async (req, res) => {
 });
 
 /**
+ * @route   GET /api/loans/audit-trail
+ * @desc    Get complete audit trail history for all approval and rejection actions
+ * @access  Public
+ */
+router.get("/audit-trail", async (req, res) => {
+  try {
+    const loans = await Loan.find({}, "borrower status statusHistory createdAt updatedAt").sort({ updatedAt: -1 });
+    const fullAuditTrail = loans.map((loan) => ({
+      loanId: loan._id,
+      borrower: loan.borrower,
+      currentStatus: loan.status,
+      auditHistory: loan.statusHistory || [],
+    }));
+
+    res.json({
+      success: true,
+      count: fullAuditTrail.length,
+      auditLogs: fullAuditTrail,
+    });
+  } catch (error) {
+    console.error("Fetch full audit trail error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching audit trail",
+    });
+  }
+});
+
+/**
  * @route   GET /api/loans/:id/audit
  * @desc    Get audit trail history for a specific loan application
  * @access  Public
