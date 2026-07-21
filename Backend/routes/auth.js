@@ -94,4 +94,19 @@ router.post("/bootstrap", async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/auth/check-bootstrap
+ * @desc    Check if the database has any users registered
+ * @access  Public
+ */
+router.get("/check-bootstrap", async (req, res) => {
+  try {
+    const userCount = await User.countDocuments({});
+    res.json({ success: true, bootstrapped: userCount > 0 });
+  } catch (error) {
+    console.error("Check bootstrap error:", error);
+    res.status(500).json({ success: false, message: "Server error checking bootstrap status" });
+  }
+});
+
 export default router;

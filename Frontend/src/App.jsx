@@ -1,38 +1,73 @@
 import React, { useState, useEffect } from "react";
 import LoanApplicationForm from "./components/LoanApplicationForm";
+import BorrowerForm from "./components/BorrowerForm";
 import "./App.css";
 
 function App() {
-  const [activeTab, setActiveTab] = useState("users"); // "users" | "loans" | "review"
+  const [activeTab, setActiveTab] = useState("borrowers"); // Default fallback tab
+  const [token, setToken] = useState(() => localStorage.getItem("token") || "");
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem("user");
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [isBootstrapped, setIsBootstrapped] = useState(null); // null (checking), true, false
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // Auth Form State
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState(""); // for bootstrapping admin
+  const [authError, setAuthError] = useState("");
+  const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
+
+  // App Data States
   const [loans, setLoans] = useState([]);
   const [pendingLoans, setPendingLoans] = useState([]);
+  const [borrowers, setBorrowers] = useState([]);
+  const [users, setUsers] = useState([]);
   const [selectedLoan, setSelectedLoan] = useState(null);
+  
+  // App UI States
   const [reviewNote, setReviewNote] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
-
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     role: "",
   });
-
   const [errors, setErrors] = useState({});
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState({});
   const [notification, setNotification] = useState(null);
 
-
-  // Fetch users, loans and pending loans on component mount
+  // 1. Check if the system has users (bootstrapped) on initial mount
   useEffect(() => {
-    fetchUsers();
-    fetchLoans();
-    fetchPendingLoans();
+    const checkBootstrapStatus = async () => {
+      try {
+        const res = await fetch("/api/auth/check-bootstrap");
+        if (res.ok) {
+          const data = await res.json();
+          setIsBootstrapped(data.bootstrapped);
+        } else {
+          setIsBootstrapped(true); // Fallback to login in case of check failure
+        }
+      } catch (err) {
+        console.error("Failed to check bootstrap status", err);
+        setIsBootstrapped(true);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+    checkBootstrapStatus();
   }, []);
 
-
-  // Clear notification alert after 5 seconds
+  // 2. Clear notification alert after 5 seconds
   useEffect(() => {
     if (notification) {
       const timer = setTimeout(() => {
@@ -42,18 +77,146 @@ function App() {
     }
   }, [notification]);
 
+  // 3. Dynamic active tab and resource loading when token/user changes
+  useEffect(() => {
+    if (token && currentUser) {
+      // Direct user to their appropriate default tab
+      if (currentUser.role === "admin") {
+        setActiveTab("users");
+        fetchUsers();
+      } else if (currentUser.role === "lender") {
+        setActiveTab("borrowers");
+      } else if (currentUser.role === "officer") {
+        setActiveTab("review");
+      }
+
+      // Fetch base platform data
+      fetchLoans();
+      fetchPendingLoans();
+      fetchBorrowers();
+    }
+  }, [token, currentUser?.role]);
+
+  // Login handler
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    
+    if (!authEmail.trim() || !authPassword) {
+      setAuthError("Please provide both email and password.");
+      return;
+    }
+
+    setIsSubmittingAuth(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: authEmail.trim(),
+          password: authPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        setToken(data.token);
+        setCurrentUser(data.user);
+        setAuthEmail("");
+        setAuthPassword("");
+        showNotification("success", `Secure access granted. Welcome, ${data.user.name}!`);
+      } else {
+        setAuthError(data.message || "Invalid credentials.");
+      }
+    } catch (err) {
+      setAuthError("Could not connect to authentication services.");
+    } finally {
+      setIsSubmittingAuth(false);
+    }
+  };
+
+  // Bootstrap handler
+  const handleBootstrap = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+
+    if (!authName.trim() || !authEmail.trim() || !authPassword) {
+      setAuthError("Please specify a name, email address, and password.");
+      return;
+    }
+
+    if (authPassword.length < 6) {
+      setAuthError("Password must be at least 6 characters long.");
+      return;
+    }
+
+    setIsSubmittingAuth(true);
+    try {
+      const res = await fetch("/api/auth/bootstrap", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: authName.trim(),
+          email: authEmail.trim(),
+          password: authPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        showNotification("success", "First Administrator registered successfully! Please log in.");
+        setIsBootstrapped(true);
+        setAuthName("");
+        setAuthPassword("");
+      } else {
+        setAuthError(data.message || "Bootstrapping failed.");
+      }
+    } catch (err) {
+      setAuthError("Failed to initialize system administrator.");
+    } finally {
+      setIsSubmittingAuth(false);
+    }
+  };
+
+  // Logout handler
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setToken("");
+    setCurrentUser(null);
+    setLoans([]);
+    setPendingLoans([]);
+    setBorrowers([]);
+    setUsers([]);
+    setSelectedLoan(null);
+    showNotification("info", "Secure logout completed successfully.");
+  };
+
+  // Resource fetching functions
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/users");
+      const res = await fetch("/api/users", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (res.ok) {
         const data = await res.json();
-        setUsers(data);
+        setUsers(data.users || data || []);
       } else {
-        showNotification("error", "Failed to retrieve existing users list.");
+        showNotification("error", "Failed to retrieve system users.");
       }
     } catch (err) {
-      showNotification("error", "Could not connect to the backend server.");
+      showNotification("error", "Connection error trying to fetch user directory.");
     } finally {
       setLoading(false);
     }
@@ -61,32 +224,53 @@ function App() {
 
   const fetchLoans = async () => {
     try {
-      const res = await fetch("/api/loans");
+      const res = await fetch("/api/loans", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (res.ok) {
         const data = await res.json();
         setLoans(data.loans || []);
-      } else {
-        showNotification("error", "Failed to retrieve existing loan applications.");
       }
     } catch (err) {
-      showNotification("error", "Could not connect to the backend server to fetch loans.");
+      showNotification("error", "Error connecting to backend for loan profiles.");
     }
   };
 
   const fetchPendingLoans = async () => {
     try {
-      const res = await fetch("/api/loans/pending");
+      const res = await fetch("/api/loans/pending", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (res.ok) {
         const data = await res.json();
         setPendingLoans(data.loans || []);
-      } else {
-        showNotification("error", "Failed to retrieve pending loan applications.");
       }
     } catch (err) {
-      showNotification("error", "Could not connect to the backend server to fetch pending loans.");
+      showNotification("error", "Error connecting to backend for pending applications.");
     }
   };
 
+  const fetchBorrowers = async () => {
+    try {
+      const res = await fetch("/api/borrowers", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBorrowers(data.borrowers || []);
+      }
+    } catch (err) {
+      showNotification("error", "Could not connect to platform to retrieve borrowers.");
+    }
+  };
+
+  // Actions handlers
   const handleReviewAction = async (id, action) => {
     if (!id) return;
     setSubmittingReview(true);
@@ -95,6 +279,7 @@ function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ note: reviewNote }),
       });
@@ -108,27 +293,23 @@ function App() {
         fetchLoans();
         fetchPendingLoans();
       } else {
-        showNotification("error", data.message || `Failed to ${action} loan application.`);
+        showNotification("error", data.message || `Failed to evaluate loan application.`);
       }
     } catch (err) {
-      showNotification("error", `Connection failure while attempting to ${action} loan.`);
+      showNotification("error", "Network timeout or failure assessing application.");
     } finally {
       setSubmittingReview(false);
     }
   };
 
-
   const showNotification = (type, text) => {
     setNotification({ type, text });
   };
 
-  // Regular expression to validate standard emails
   const validateEmail = (emailStr) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(emailStr);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
   };
 
-  // Perform validation on a single field
   const validateField = (name, value) => {
     let error = "";
     if (name === "name") {
@@ -151,7 +332,6 @@ function App() {
     return error;
   };
 
-  // Handle change and update validation errors dynamically
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -162,7 +342,6 @@ function App() {
     }
   };
 
-  // Validate field on blur
   const handleBlur = (e) => {
     const { name, value } = e.target;
     setTouched((prev) => ({ ...prev, [name]: true }));
@@ -170,7 +349,6 @@ function App() {
     setErrors((prev) => ({ ...prev, [name]: fieldError }));
   };
 
-  // Validate the whole form before submitting
   const validateForm = () => {
     const newErrors = {};
     Object.keys(formData).forEach((field) => {
@@ -180,7 +358,6 @@ function App() {
       }
     });
     setErrors(newErrors);
-    // Mark all as touched so errors display immediately
     const allTouched = {};
     Object.keys(formData).forEach((field) => {
       allTouched[field] = true;
@@ -189,7 +366,7 @@ function App() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle submit to add new user
+  // Add new user submit (Admin panel only)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -200,10 +377,11 @@ function App() {
 
     setSubmitting(true);
     try {
-      const response = await fetch("/users", {
+      const response = await fetch("/api/users/add", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
       });
@@ -211,13 +389,11 @@ function App() {
       const responseData = await response.json();
 
       if (response.ok) {
-        showNotification("success", `User "${formData.name}" added successfully!`);
-        // Reset form states
+        showNotification("success", `User "${formData.name}" added successfully! Check email onboarding info.`);
         setFormData({ name: "", email: "", role: "" });
         setErrors({});
         setTouched({});
-        // Add new user to the top of list
-        setUsers((prev) => [responseData, ...prev]);
+        setUsers((prev) => [responseData.user || responseData, ...prev]);
       } else {
         showNotification("error", responseData.message || "Failed to add new user.");
       }
@@ -228,52 +404,37 @@ function App() {
     }
   };
 
-  // Handle user deletion
+  // Staff user delete
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Are you sure you want to delete user "${name}"?`)) {
       return;
     }
 
     try {
-      const response = await fetch(`/users/${id}`, {
+      const response = await fetch(`/api/users/${id}`, {
         method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
+
+      const data = await response.json();
 
       if (response.ok) {
         showNotification("success", `User "${name}" has been deleted.`);
         setUsers((prev) => prev.filter((user) => user._id !== id));
       } else {
-        const errData = await response.json();
-        showNotification("error", errData.message || "Failed to delete user.");
+        showNotification("error", data.message || "Failed to delete user.");
       }
     } catch (err) {
       showNotification("error", "Connection error. User could not be deleted.");
     }
   };
 
-  // Helper to extract initials for user avatar
-  const getInitials = (name) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .slice(0, 2)
-      .join("");
-  };
-
-  // Compute stat metrics
-  const totalUsers = users.length;
-  const adminCount = users.filter((u) => u.role === "Admin").length;
-  const managerCount = users.filter((u) => u.role === "Manager").length;
-
-  // Compute loan stat metrics
-  const totalLoans = loans.length;
-  const totalLoanValue = loans.reduce((sum, loan) => sum + Number(loan.amount), 0);
-  const avgTerm = loans.length > 0 ? (loans.reduce((sum, loan) => sum + Number(loan.term), 0) / loans.length).toFixed(1) : 0;
-
   const handleLoanSubmitSuccess = (newLoan) => {
     setLoans((prev) => [newLoan, ...prev]);
     showNotification("success", `Loan application for "${newLoan.borrower}" submitted successfully!`);
+    fetchPendingLoans();
   };
 
   const handleDeleteLoan = async (id, borrower) => {
@@ -284,11 +445,15 @@ function App() {
     try {
       const response = await fetch(`/api/loans/${id}`, {
         method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (response.ok) {
         showNotification("success", `Loan application for "${borrower}" has been deleted.`);
         setLoans((prev) => prev.filter((l) => l._id !== id));
+        fetchPendingLoans();
       } else {
         const data = await response.json();
         showNotification("error", data.message || "Failed to delete loan application.");
@@ -298,48 +463,261 @@ function App() {
     }
   };
 
+  const handleBorrowerSubmitSuccess = (newBorrower) => {
+    setBorrowers((prev) => [newBorrower, ...prev]);
+    showNotification("success", `Borrower Profile registered: "${newBorrower.name}"`);
+  };
 
+  const getInitials = (name) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join("");
+  };
 
+  // Metrics calculators
+  const totalUsers = users.length;
+  const adminCount = users.filter((u) => u.role?.toLowerCase() === "admin").length;
+  const lenderCount = users.filter((u) => u.role?.toLowerCase() === "lender").length;
+  const officerCount = users.filter((u) => u.role?.toLowerCase() === "officer").length;
+
+  const totalLoans = loans.length;
+  const totalLoanValue = loans.reduce((sum, loan) => sum + Number(loan.amount), 0);
+  const avgTerm = loans.length > 0 ? (loans.reduce((sum, loan) => sum + Number(loan.term), 0) / loans.length).toFixed(1) : 0;
+
+  // Render auth loading spinner
+  if (authLoading) {
+    return (
+      <div className="global-loader" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+        <span className="spinner"></span>
+      </div>
+    );
+  }
+
+  // Render bootstrap configuration screen if db is empty
+  if (isBootstrapped === false) {
+    return (
+      <div className="auth-container">
+        <div className="glass-card auth-card">
+          <div className="auth-header">
+            <h2>Initialize Platform</h2>
+            <p>Create the primary system Administrator account to begin setup.</p>
+          </div>
+          
+          {authError && (
+            <div className="auth-error-banner">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span>{authError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleBootstrap} noValidate>
+            <div className="form-group">
+              <label htmlFor="authName" className="form-label">Full Name</label>
+              <div className="input-wrapper">
+                <input
+                  type="text"
+                  id="authName"
+                  value={authName}
+                  onChange={(e) => setAuthName(e.target.value)}
+                  className="form-control"
+                  placeholder="e.g. Priyam Verma"
+                  required
+                />
+                <svg className="input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="authEmail" className="form-label">Email Address</label>
+              <div className="input-wrapper">
+                <input
+                  type="email"
+                  id="authEmail"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  className="form-control"
+                  placeholder="name@company.com"
+                  required
+                />
+                <svg className="input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="authPassword" className="form-label">Password</label>
+              <div className="input-wrapper">
+                <input
+                  type="password"
+                  id="authPassword"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  className="form-control"
+                  placeholder="Minimum 6 characters"
+                  required
+                />
+                <svg className="input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+            </div>
+
+            <button type="submit" className="btn-submit" disabled={isSubmittingAuth} style={{ marginTop: "1rem" }}>
+              {isSubmittingAuth ? "Bootstrapping..." : "Bootstrap System Admin"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Render Login Screen if not authenticated
+  if (!token || !currentUser) {
+    return (
+      <div className="auth-container">
+        <div className="glass-card auth-card">
+          <div className="auth-header">
+            <h2>Authorized Access Only</h2>
+            <p>Log in with your microfinance staff credentials to manage applications.</p>
+          </div>
+
+          {authError && (
+            <div className="auth-error-banner">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span>{authError}</span>
+            </div>
+          )}
+
+          {notification && (
+            <div className={`alert alert-${notification.type}`} role="alert" style={{ marginBottom: "1.5rem" }}>
+              <span>{notification.text}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} noValidate>
+            <div className="form-group">
+              <label htmlFor="authEmail" className="form-label">Email Address</label>
+              <div className="input-wrapper">
+                <input
+                  type="email"
+                  id="authEmail"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  className="form-control"
+                  placeholder="name@company.com"
+                  required
+                />
+                <svg className="input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="authPassword" className="form-label">Password</label>
+              <div className="input-wrapper">
+                <input
+                  type="password"
+                  id="authPassword"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  className="form-control"
+                  placeholder="Enter secure password"
+                  required
+                />
+                <svg className="input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+            </div>
+
+            <button type="submit" className="btn-submit" disabled={isSubmittingAuth} style={{ marginTop: "1rem" }}>
+              {isSubmittingAuth ? "Signing in..." : "Secure Sign In"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Authenticated View
   return (
     <>
-      <header>
-        <h1>Admin Control Panel</h1>
-        <p className="subtitle">Manage user authorization directory, define credentials and roles</p>
+      <header className="app-header">
+        <div>
+          <h1>Village Microfinance Portal</h1>
+          <p className="subtitle" style={{ margin: 0 }}>
+            Active Session: <strong style={{ color: "var(--primary)" }}>{currentUser.name}</strong> ({currentUser.role.toUpperCase()})
+          </p>
+        </div>
+        <button className="btn-logout" onClick={handleLogout}>
+          <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span>Secure Logout</span>
+        </button>
       </header>
 
-      {/* Tabs navigation */}
+      {/* Dynamic Tabs navigation by Role */}
       <div className="navigation-tabs">
-        <button
-          className={`nav-tab-btn ${activeTab === "users" ? "active" : ""}`}
-          onClick={() => setActiveTab("users")}
-        >
-          <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <span>Staff Directory</span>
-        </button>
-        <button
-          className={`nav-tab-btn ${activeTab === "loans" ? "active" : ""}`}
-          onClick={() => setActiveTab("loans")}
-        >
-          <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <span>Loan Applications</span>
-        </button>
-        <button
-          className={`nav-tab-btn ${activeTab === "review" ? "active" : ""}`}
-          onClick={() => setActiveTab("review")}
-        >
-          <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-          </svg>
-          <span>Review Center</span>
-        </button>
+        {currentUser.role === "admin" && (
+          <button
+            className={`nav-tab-btn ${activeTab === "users" ? "active" : ""}`}
+            onClick={() => setActiveTab("users")}
+          >
+            <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <span>Staff Directory</span>
+          </button>
+        )}
+        {(currentUser.role === "admin" || currentUser.role === "lender" || currentUser.role === "officer") && (
+          <button
+            className={`nav-tab-btn ${activeTab === "borrowers" ? "active" : ""}`}
+            onClick={() => setActiveTab("borrowers")}
+          >
+            <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span>Borrower Profiles</span>
+          </button>
+        )}
+        {(currentUser.role === "admin" || currentUser.role === "lender") && (
+          <button
+            className={`nav-tab-btn ${activeTab === "loans" ? "active" : ""}`}
+            onClick={() => setActiveTab("loans")}
+          >
+            <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span>Loan Applications</span>
+          </button>
+        )}
+        {(currentUser.role === "admin" || currentUser.role === "officer") && (
+          <button
+            className={`nav-tab-btn ${activeTab === "review" ? "active" : ""}`}
+            onClick={() => setActiveTab("review")}
+          >
+            <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            <span>Review Center</span>
+          </button>
+        )}
       </div>
 
-      {activeTab === "users" ? (
-        /* Metrics Banner - Users */
+      {/* Metrics Banner */}
+      {activeTab === "users" && currentUser.role === "admin" ? (
         <div className="stats-bar">
           <div className="stat-card">
             <div className="stat-icon">
@@ -372,13 +750,50 @@ function App() {
               </svg>
             </div>
             <div className="stat-info">
-              <span className="stat-val">{managerCount}</span>
-              <span className="stat-lbl">Managers</span>
+              <span className="stat-val">{lenderCount}</span>
+              <span className="stat-lbl">Lenders</span>
+            </div>
+          </div>
+        </div>
+      ) : activeTab === "borrowers" ? (
+        <div className="stats-bar">
+          <div className="stat-card">
+            <div className="stat-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <div className="stat-info">
+              <span className="stat-val">{borrowers.length}</span>
+              <span className="stat-lbl">Total Borrowers</span>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon purple">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <div className="stat-info">
+              <span className="stat-val">{borrowers.filter(b => b.idProof?.type === "Aadhaar Card").length}</span>
+              <span className="stat-lbl">Aadhaar Profiles</span>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon green">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4z" />
+              </svg>
+            </div>
+            <div className="stat-info">
+              <span className="stat-val">{borrowers.filter(b => b.idProof?.type === "PAN Card").length}</span>
+              <span className="stat-lbl">PAN Profiles</span>
             </div>
           </div>
         </div>
       ) : activeTab === "loans" ? (
-        /* Metrics Banner - Loans */
         <div className="stats-bar">
           <div className="stat-card">
             <div className="stat-icon">
@@ -417,7 +832,6 @@ function App() {
           </div>
         </div>
       ) : (
-        /* Metrics Banner - Review Center */
         <div className="stats-bar">
           <div className="stat-card">
             <div className="stat-icon">
@@ -473,7 +887,8 @@ function App() {
         </div>
       )}
 
-      {activeTab === "users" ? (
+      {/* Panels rendering depending on Active Tab */}
+      {activeTab === "users" && currentUser.role === "admin" ? (
         <main className="dashboard-grid">
           {/* Left Side: Create User Form Card */}
           <section className="glass-card">
@@ -560,10 +975,9 @@ function App() {
                     required
                   >
                     <option value="" disabled>-- Select a Role --</option>
-                    <option value="Admin">Admin (Full Access)</option>
-                    <option value="Editor">Editor (Write Access)</option>
-                    <option value="Manager">Manager (Resource Owner)</option>
-                    <option value="Viewer">Viewer (Read Only)</option>
+                    <option value="admin">Admin (Full Access)</option>
+                    <option value="lender">Lender (Create Borrowers/Loans)</option>
+                    <option value="officer">Loan Officer (Evaluations)</option>
                   </select>
                   <svg className="input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -632,7 +1046,7 @@ function App() {
                     <tr>
                       <th>User Details</th>
                       <th>Selected Role</th>
-                      <th style={{ textAlign: "right" }}>Actions</th>
+                      <th style={{ textalign: "right" }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -650,11 +1064,11 @@ function App() {
                           </div>
                         </td>
                         <td>
-                          <span className={`badge badge-${user.role.toLowerCase()}`}>
+                          <span className={`badge badge-${user.role?.toLowerCase()}`}>
                             {user.role}
                           </span>
                         </td>
-                        <td style={{ textAlign: "right" }}>
+                        <td style={{ textalign: "right" }}>
                           <button
                             onClick={() => handleDelete(user._id, user.name)}
                             className="btn-delete"
@@ -673,7 +1087,90 @@ function App() {
             )}
           </section>
         </main>
-      ) : activeTab === "loans" ? (
+      ) : activeTab === "borrowers" && (currentUser.role === "admin" || currentUser.role === "lender" || currentUser.role === "officer") ? (
+        /* Borrowers Profiles Grid */
+        <main className="dashboard-grid">
+          {/* Left Side: Create Borrower Form Card */}
+          <section>
+            {currentUser.role === "admin" || currentUser.role === "lender" ? (
+              <BorrowerForm
+                token={token}
+                onCancel={() => showNotification("info", "Form inputs cleared.")}
+                onSubmitSuccess={handleBorrowerSubmitSuccess}
+              />
+            ) : (
+              <div className="glass-card text-center" style={{ padding: "3.5rem 2rem" }}>
+                <svg className="status-icon text-center" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: "48px", height: "48px", color: "var(--primary)", margin: "0 auto 1.5rem", display: "block" }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <h3 style={{ fontSize: "1.2rem", fontWeight: 600, marginBottom: "0.5rem" }}>Registering Restricted</h3>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem" }}>Only administrators and lenders have privileges to register new borrower profiles.</p>
+              </div>
+            )}
+          </section>
+
+          {/* Right Side: Registered Borrower Profiles Directory */}
+          <section className="glass-card">
+            <div className="list-header">
+              <h2 className="card-title">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Borrower Directory
+              </h2>
+              <span className="users-count">{borrowers.length} Borrowers</span>
+            </div>
+
+            {borrowers.length === 0 ? (
+              <div className="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3>No borrowers found</h3>
+                <p>Register the first borrower profile using the configuration panel on the left.</p>
+              </div>
+            ) : (
+              <div className="table-container">
+                <table className="users-table">
+                  <thead>
+                    <tr>
+                      <th>Borrower Details</th>
+                      <th>Identification Proof</th>
+                      <th>Residential Address</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {borrowers.map((borrower) => (
+                      <tr key={borrower._id}>
+                        <td>
+                          <div className="user-name-cell">
+                            <div className="user-avatar" style={{ background: "linear-gradient(135deg, #10b981 0%, #6366f1 100%)" }}>
+                              {borrower.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="user-details">
+                              <span style={{ fontWeight: 500 }}>{borrower.name}</span>
+                              <span className="user-email">Mobile: {borrower.contact}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: 500 }}>{borrower.idProof?.type}</span>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                            No: <span style={{ fontFamily: "monospace", letterSpacing: "1px" }}>{borrower.idProof?.number}</span>
+                          </div>
+                        </td>
+                        <td style={{ fontSize: "0.9rem", color: "var(--text-secondary)", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={borrower.address}>
+                          {borrower.address}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </main>
+      ) : activeTab === "loans" && (currentUser.role === "admin" || currentUser.role === "lender") ? (
         /* Loans Grid */
         <main className="dashboard-grid">
           {/* Left Side: Create Loan Application Card */}
@@ -713,7 +1210,7 @@ function App() {
                       <th>Term</th>
                       <th>Purpose</th>
                       <th>Status</th>
-                      <th style={{ textAlign: "right" }}>Actions</th>
+                      <th style={{ textalign: "right" }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -732,7 +1229,9 @@ function App() {
                         </td>
                         <td>
                           <span style={{ fontWeight: 500 }}>{loan.term} months</span>
-                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>{loan.createdAt}</div>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                            {loan.createdAt ? new Date(loan.createdAt).toLocaleDateString() : ""}
+                          </div>
                         </td>
                         <td>
                           <span className={`badge badge-${loan.purpose}`}>
@@ -754,7 +1253,7 @@ function App() {
                             {loan.status ? loan.status.charAt(0).toUpperCase() + loan.status.slice(1) : 'Pending'}
                           </span>
                         </td>
-                        <td style={{ textAlign: "right" }}>
+                        <td style={{ textalign: "right" }}>
                           <button
                             onClick={() => handleDeleteLoan(loan._id, loan.borrower)}
                             className="btn-delete"
@@ -773,7 +1272,7 @@ function App() {
             )}
           </section>
         </main>
-      ) : (
+      ) : activeTab === "review" && (currentUser.role === "admin" || currentUser.role === "officer") ? (
         /* Review Center Grid */
         <main className="dashboard-grid">
           {/* Left Side: Pending Applications List */}
@@ -935,6 +1434,15 @@ function App() {
             )}
           </section>
         </main>
+      ) : (
+        /* Unauthorized view or invalid tab for the role */
+        <div className="glass-card text-center" style={{ padding: "5rem 2rem" }}>
+          <svg className="status-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: "64px", height: "64px", color: "var(--error)", margin: "0 auto 1.5rem", display: "block" }}>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h2>Access Denied</h2>
+          <p style={{ color: "var(--text-secondary)", marginTop: "0.5rem" }}>You do not have permission to view this panel. Please switch to an authorized tab.</p>
+        </div>
       )}
     </>
   );
