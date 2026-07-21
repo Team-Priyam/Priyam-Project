@@ -30,6 +30,12 @@ function App() {
   const [touched, setTouched] = useState({});
   const [notification, setNotification] = useState(null);
 
+  // Search & Filter state variables for Loan Applications Dashboard
+  const [loanSearch, setLoanSearch] = useState("");
+  const [loanStatusFilter, setLoanStatusFilter] = useState("");
+  const [loanStartDate, setLoanStartDate] = useState("");
+  const [loanEndDate, setLoanEndDate] = useState("");
+
   const handleLoginSubmit = async (credentials) => {
     setIsSubmittingLogin(true);
     setLoginError("");
@@ -761,6 +767,86 @@ function App() {
                 Loan Applications Directory
               </h2>
               <span className="users-count">{loans.length} Applications</span>
+            </div>
+
+            {/* Task 1: Search & Filter UI Controls */}
+            <div className="filter-bar" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "1rem", marginBottom: "1.25rem", padding: "1rem", background: "rgba(255,255,255,0.03)", borderRadius: "12px", border: "1px solid var(--border-color)", alignItems: "end" }}>
+              {/* 1. Borrower Name Search Input */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" htmlFor="loan-search-borrower" style={{ fontSize: "0.8rem" }}>Search Borrower</label>
+                <div className="input-wrapper">
+                  <input
+                    id="loan-search-borrower"
+                    type="text"
+                    className="form-control"
+                    placeholder="Search by name..."
+                    value={loanSearch}
+                    onChange={(e) => setLoanSearch(e.target.value)}
+                  />
+                  <svg className="input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* 2. Status Dropdown Filter */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" htmlFor="loan-status-filter" style={{ fontSize: "0.8rem" }}>Status Filter</label>
+                <select
+                  id="loan-status-filter"
+                  className="form-control"
+                  style={{ paddingLeft: "1rem" }}
+                  value={loanStatusFilter}
+                  onChange={(e) => setLoanStatusFilter(e.target.value)}
+                >
+                  <option value="">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+
+              {/* 3. Date Range Picker (Start & End Dates) */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" htmlFor="loan-start-date" style={{ fontSize: "0.8rem" }}>Start Date</label>
+                <input
+                  id="loan-start-date"
+                  type="date"
+                  className="form-control"
+                  style={{ paddingLeft: "1rem" }}
+                  value={loanStartDate}
+                  onChange={(e) => setLoanStartDate(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" htmlFor="loan-end-date" style={{ fontSize: "0.8rem" }}>End Date</label>
+                <input
+                  id="loan-end-date"
+                  type="date"
+                  className="form-control"
+                  style={{ paddingLeft: "1rem" }}
+                  value={loanEndDate}
+                  onChange={(e) => setLoanEndDate(e.target.value)}
+                />
+              </div>
+
+              {/* Reset Filters Control */}
+              {(loanSearch || loanStatusFilter || loanStartDate || loanEndDate) && (
+                <button
+                  type="button"
+                  className="btn-cancel"
+                  style={{ height: "42px", padding: "0 0.85rem", fontSize: "0.825rem" }}
+                  onClick={() => {
+                    setLoanSearch("");
+                    setLoanStatusFilter("");
+                    setLoanStartDate("");
+                    setLoanEndDate("");
+                  }}
+                >
+                  Clear Filters
+                </button>
+              )}
             </div>
 
             {loans.length === 0 ? (
