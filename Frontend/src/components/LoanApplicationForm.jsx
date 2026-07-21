@@ -144,13 +144,14 @@ const LoanApplicationForm = ({ onCancel, onSubmitSuccess }) => {
     setIsSubmitting(true);
 
     try {
+      // Send POST request with form data to backend /api/loans endpoint
       const response = await fetch("/api/loans", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          borrower: formData.borrower,
+          borrower: formData.borrower.trim(),
           amount: Number(formData.amount),
           term: Number(formData.term),
           purpose: formData.purpose,
@@ -159,11 +160,14 @@ const LoanApplicationForm = ({ onCancel, onSubmitSuccess }) => {
 
       const data = await response.json();
 
-      if (response.ok) {
-        // Success confirmation state
+      // Handle backend success response
+      if (response.ok && data.success !== false) {
+        const submittedBorrower = formData.borrower.trim();
         setSubmitStatus("success");
-        setStatusMessage(`Loan application for "${formData.borrower}" has been successfully submitted!`);
-        
+        setStatusMessage(
+          data.message || `Loan application for "${submittedBorrower}" has been successfully submitted!`
+        );
+
         // Reset form input values
         setFormData({
           borrower: "",
@@ -177,16 +181,21 @@ const LoanApplicationForm = ({ onCancel, onSubmitSuccess }) => {
           onSubmitSuccess(data.loan);
         }
       } else {
+        // Handle backend error response (e.g. 400 validation error)
         setSubmitStatus("error");
-        setStatusMessage(data.message || "Failed to submit loan application.");
+        setStatusMessage(
+          data.message || "Failed to submit loan application. Please verify your details."
+        );
       }
     } catch (err) {
+      // Handle network or unexpected connection errors
       setSubmitStatus("error");
-      setStatusMessage("Could not connect to the backend server. Please try again.");
+      setStatusMessage(
+        "Could not connect to the backend server. Please check your network connection and try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
-
   };
 
   return (
