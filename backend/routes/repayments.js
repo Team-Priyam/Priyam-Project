@@ -229,9 +229,18 @@ router.post("/process-overdue", async (req, res) => {
       item.status = "overdue";
 
       // PRE-CHECK & DEDUPLICATION GUARD: Check before sending new notification
-      if (item.overdueNotified === true) {
-        console.log(`[Deduplication Guard] Skipping already notified overdue event for borrower: ${item.borrower} (Notified at: ${item.overdueNotifiedAt})`);
+      const existingNotif = await Notification.findOne({ repaymentId: item._id, type: "overdue_alert" });
+
+      if (item.overdueNotified === true || existingNotif) {
+        console.log(`[Deduplication Guard] Single notification policy enforced. Skipping borrower: ${item.borrower} (Notified at: ${item.overdueNotifiedAt || existingNotif?.createdAt})`);
         await item.save();
+        processedLogs.push({
+          id: item._id,
+          borrower: item.borrower,
+          daysOverdue,
+          notified: false,
+          reason: "already_notified_deduplicated",
+        });
         continue;
       }
         // 1. Create Borrower In-App Notification
