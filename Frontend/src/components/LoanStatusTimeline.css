@@ -1,0 +1,119 @@
+/* Visual Status Tracker Timeline */
+.status-tracker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  margin: 2.5rem 0;
+  padding: 0 1rem;
+}
+
+.tracker-line-bg {
+  position: absolute;
+  top: 24px;
+  left: 3rem;
+  right: 3rem;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  z-index: 1;
+}
+
+.tracker-line-progress {
+  position: absolute;
+  top: 24px;
+  left: 3rem;
+  height: 4px;
+  background: linear-gradient(90deg, var(--success) 0%, var(--primary) 100%);
+  z-index: 2;
+  transition: width 0.5s ease-in-out;
+}
+
+.tracker-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 3;
+  width: 7rem;
+  text-align: center;
+}
+
+.tracker-node {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #111827;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: var(--transition-smooth);
+  margin-bottom: 0.75rem;
+}
+
+.tracker-node svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Node States */
+.tracker-step.completed .tracker-node {
+  background: var(--success);
+  border-color: var(--success);
+  color: #0c0f16;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+.tracker-step.active .tracker-node {
+  background: #1e1b4b;
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+  animation: pulsateGlow 2s infinite ease-in-out;
+}
+
+.tracker-step.failed .tracker-node {
+  background: var(--error);
+  border-color: var(--error);
+  color: #fff;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+.tracker-step-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: var(--transition-smooth);
+}
+
+.tracker-step.active .tracker-step-title {
+  color: var(--primary);
+}
+
+.tracker-step.completed .tracker-step-title {
+  color: var(--text-primary);
+}
+
+.tracker-step-subtext {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 2px;
+}
+
+.tracker-step-time {
+  font-size: 0.725rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* Keyframes */
+@keyframes pulsateGlow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+    border-color: rgba(99, 102, 241, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
+    border-color: rgba(99, 102, 241, 1);
+  }
+}

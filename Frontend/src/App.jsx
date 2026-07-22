@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import LoanApplicationForm from "./components/LoanApplicationForm";
 import BorrowerForm from "./components/BorrowerForm";
+import LoanStatusTimeline from "./components/LoanStatusTimeline";
 import "./App.css";
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
   const [borrowers, setBorrowers] = useState([]);
   const [users, setUsers] = useState([]);
   const [selectedLoan, setSelectedLoan] = useState(null);
+  const [selectedLoanDetails, setSelectedLoanDetails] = useState(null);
   
   // App UI States
   const [reviewNote, setReviewNote] = useState("");
@@ -96,6 +98,32 @@ function App() {
       fetchBorrowers();
     }
   }, [token, currentUser?.role]);
+
+  // Real-time polling updates
+  useEffect(() => {
+    if (token) {
+      const interval = setInterval(() => {
+        fetchLoans();
+        fetchPendingLoans();
+      }, 5000); // poll every 5 seconds for real-time updates
+      return () => clearInterval(interval);
+    }
+  }, [token]);
+
+  // Sync selected loan details and selected review loan with updated list for real-time tracking
+  useEffect(() => {
+    if (loans.length > 0) {
+      if (selectedLoanDetails) {
+        const updatedDetails = loans.find((l) => l._id === selectedLoanDetails._id);
+        if (updatedDetails) setSelectedLoanDetails(updatedDetails);
+      }
+      if (selectedLoan) {
+        const updatedReview = loans.find((l) => l._id === selectedLoan._id);
+        if (updatedReview) setSelectedLoan(updatedReview);
+      }
+    }
+  }, [loans, selectedLoanDetails?._id, selectedLoan?._id]);
+
 
   // Login handler
   const handleLogin = async (e) => {
@@ -1215,7 +1243,12 @@ function App() {
                   </thead>
                   <tbody>
                     {loans.map((loan) => (
-                      <tr key={loan._id}>
+                      <tr 
+                        key={loan._id}
+                        onClick={() => setSelectedLoanDetails(loan)}
+                        style={{ cursor: "pointer" }}
+                        title="Click to view visual status timeline"
+                      >
                         <td>
                           <div className="user-name-cell">
                             <div className="user-avatar" style={{ background: "linear-gradient(135deg, #10b981 0%, #6366f1 100%)" }}>
@@ -1253,9 +1286,42 @@ function App() {
                             {loan.status ? loan.status.charAt(0).toUpperCase() + loan.status.slice(1) : 'Pending'}
                           </span>
                         </td>
-                        <td style={{ textalign: "right" }}>
+                        <td style={{ textAlign: "right" }}>
                           <button
-                            onClick={() => handleDeleteLoan(loan._id, loan.borrower)}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedLoanDetails(loan);
+                            }}
+                            className="btn-view-timeline"
+                            title="View Visual Status Timeline & Details"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              padding: "0.4rem 0.75rem",
+                              borderRadius: "8px",
+                              border: "1px solid rgba(99, 102, 241, 0.3)",
+                              background: "rgba(99, 102, 241, 0.12)",
+                              color: "#a5b4fc",
+                              fontSize: "0.8rem",
+                              fontWeight: 500,
+                              cursor: "pointer",
+                              marginRight: "0.5rem",
+                              transition: "all 0.2s ease"
+                            }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="14" height="14">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Timeline
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteLoan(loan._id, loan.borrower);
+                            }}
                             className="btn-delete"
                             title="Delete Loan Application"
                           >
@@ -1367,7 +1433,17 @@ function App() {
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Current Status</span>
-                  <span className="badge badge-pending">Pending Review</span>
+                  <span className={`badge badge-${selectedLoan.status || 'pending'}`}>
+                    {selectedLoan.status ? selectedLoan.status.charAt(0).toUpperCase() + selectedLoan.status.slice(1) : 'Pending Review'}
+                  </span>
+                </div>
+
+                {/* Visual Progress Timeline */}
+                <div style={{ marginTop: "1.25rem", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--border-color)", borderRadius: "16px", padding: "1rem 0.5rem" }}>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "0.5rem", paddingLeft: "1rem" }}>
+                    Visual Application Progress
+                  </div>
+                  <LoanStatusTimeline loan={selectedLoan} />
                 </div>
 
                 <div style={{ marginTop: "1.5rem" }}>
@@ -1442,6 +1518,79 @@ function App() {
           </svg>
           <h2>Access Denied</h2>
           <p style={{ color: "var(--text-secondary)", marginTop: "0.5rem" }}>You do not have permission to view this panel. Please switch to an authorized tab.</p>
+        </div>
+      )}
+
+      {/* Detailed Loan Timeline Modal */}
+      {selectedLoanDetails && (
+        <div className="modal-backdrop" onClick={() => setSelectedLoanDetails(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setSelectedLoanDetails(null)}>
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.25rem", color: "var(--text-primary)" }}>
+              Loan Progress Tracker
+            </h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
+              Real-time status tracking for borrower application
+            </p>
+
+            {/* Visual Progress Timeline */}
+            <LoanStatusTimeline loan={selectedLoanDetails} />
+
+            {/* Detailed parameters */}
+            <div className="loan-details-grid">
+              <div className="detail-item">
+                <span className="detail-item-lbl">Borrower Name</span>
+                <span className="detail-item-val">{selectedLoanDetails.borrower}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-item-lbl">Requested Principal</span>
+                <span className="detail-item-val" style={{ color: "var(--primary)" }}>
+                  ${Number(selectedLoanDetails.amount).toLocaleString()}
+                </span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-item-lbl">Amortization Period</span>
+                <span className="detail-item-val">{selectedLoanDetails.term} Months</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-item-lbl">Loan Purpose / Code</span>
+                <span className="detail-item-val" style={{ textTransform: "capitalize" }}>
+                  {selectedLoanDetails.purpose}
+                </span>
+              </div>
+            </div>
+
+            {/* Audit timeline details */}
+            {selectedLoanDetails.statusHistory && selectedLoanDetails.statusHistory.length > 0 && (
+              <div style={{ marginTop: "2rem" }}>
+                <h4 style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "1rem" }}>
+                  Audit History Log
+                </h4>
+                <div className="history-timeline" style={{ maxHeight: "200px", overflowY: "auto", paddingRight: "0.5rem" }}>
+                  {selectedLoanDetails.statusHistory.map((history, idx) => (
+                    <div key={idx} className={`timeline-item status-${history.status}`}>
+                      <div className="timeline-header">
+                        <span style={{ fontWeight: 600, color: history.status === "approved" ? "var(--success)" : history.status === "rejected" ? "var(--error)" : "var(--primary)", fontSize: "0.85rem" }}>
+                          {history.action.toUpperCase()}
+                        </span>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                          {new Date(history.timestamp).toLocaleString()} • {history.user}
+                        </span>
+                      </div>
+                      <div className="timeline-note" style={{ fontSize: "0.825rem", marginTop: "4px" }}>
+                        {history.note}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </>
