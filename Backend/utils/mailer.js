@@ -1,4 +1,26 @@
-import nodemailer from "nodemailer";
+/**
+ * Checks user notification preferences before sending email or SMS messages
+ * @param {Object} preferences - User's notificationPreferences schema object
+ * @param {string} channel - Delivery channel ('email', 'sms', 'push')
+ * @param {string} category - Alert category ('repayment', 'overdue', 'application', 'digest')
+ * @returns {boolean} Whether notification should be sent
+ */
+export const shouldSendNotification = (preferences, channel = "email", category = "general") => {
+  if (!preferences) return true; // Default to sending if preferences are not set
+
+  // Check channel preferences
+  if (channel === "email" && preferences.emailNotifications === false) return false;
+  if (channel === "sms" && preferences.smsNotifications === false) return false;
+  if (channel === "push" && preferences.pushNotifications === false) return false;
+
+  // Check category preferences
+  if (category === "repayment" && preferences.repaymentReminders === false) return false;
+  if (category === "overdue" && preferences.overdueAlerts === false) return false;
+  if (category === "application" && preferences.applicationUpdates === false) return false;
+  if (category === "digest" && preferences.systemDigest === false) return false;
+
+  return true;
+};
 
 /**
  * Sends an onboarding email containing login instructions and a temporary password.
@@ -6,8 +28,14 @@ import nodemailer from "nodemailer";
  * @param {string} toEmail - The recipient email address
  * @param {string} userName - The recipient's name
  * @param {string} tempPassword - The auto-generated temporary password
+ * @param {Object} userPreferences - Optional notification preferences of recipient
  */
-export const sendOnboardingEmail = async (toEmail, userName, tempPassword) => {
+export const sendOnboardingEmail = async (toEmail, userName, tempPassword, userPreferences = null) => {
+  // Respect user preferences before attempting email delivery
+  if (!shouldSendNotification(userPreferences, "email", "application")) {
+    console.log(`[Notification Service] Email notification suppressed for ${toEmail} per user preferences.`);
+    return { success: true, mode: "suppressed", message: "Suppressed by user preferences" };
+  }
   const loginUrl = process.env.FRONTEND_URL || "http://localhost:5173";
   
   const emailSubject = "Welcome to Village Microfinance - Your Account Credentials";

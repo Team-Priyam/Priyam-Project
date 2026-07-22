@@ -367,7 +367,37 @@ function App() {
     }
   };
 
-  const showNotification = (type, text) => {
+  const [userPreferences, setUserPreferences] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem("user");
+      const key = savedUser ? `notification_preferences_${JSON.parse(savedUser).email}` : "notification_preferences";
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const showNotification = (type, text, category = "general") => {
+    // Respect user preferences before sending/showing notifications
+    if (userPreferences) {
+      if (userPreferences.pushNotifications === false) {
+        console.log("[Notification Suppressed] In-app popups/push disabled per user preferences.");
+        return;
+      }
+      if (category === "repayment" && userPreferences.repaymentReminders === false) {
+        console.log("[Notification Suppressed] Repayment reminders disabled per user preferences.");
+        return;
+      }
+      if (category === "overdue" && userPreferences.overdueAlerts === false) {
+        console.log("[Notification Suppressed] Overdue alerts disabled per user preferences.");
+        return;
+      }
+      if (category === "application" && userPreferences.applicationUpdates === false) {
+        console.log("[Notification Suppressed] Application status updates disabled per user preferences.");
+        return;
+      }
+    }
     setNotification({ type, text });
   };
 
@@ -1624,7 +1654,8 @@ function App() {
         <NotificationSettings
           token={token}
           currentUser={currentUser}
-          onPreferencesUpdated={(_prefs) => {
+          onPreferencesUpdated={(prefs) => {
+            setUserPreferences(prefs);
             showNotification("info", "Notification settings synchronized.");
           }}
         />
