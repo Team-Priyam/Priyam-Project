@@ -906,7 +906,7 @@ function App() {
             </div>
           </div>
         </div>
-      ) : (
+      ) : activeTab === "review" ? (
         <div className="stats-bar">
           <div className="stat-card">
             <div className="stat-icon">
@@ -944,7 +944,7 @@ function App() {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Global Notifications Alert Banner */}
       {notification && (
@@ -1435,6 +1435,7 @@ function App() {
             )}
           </section>
         </main>
+      </div>
       ) : activeTab === "review" && (currentUser.role === "admin" || currentUser.role === "officer") ? (
         <div>
           {/* Overdue Repayments Dashboard Widget */}

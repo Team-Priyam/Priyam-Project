@@ -168,7 +168,6 @@ const OverdueLoansWidget = ({
       ) : overdueLoans.length === 0 ? (
         /* Empty State */
         <div className="overdue-empty-state">
-        <div className="overdue-empty-state">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
