@@ -111,6 +111,67 @@ router.get("/pending", async (req, res) => {
 });
 
 /**
+ * @route   GET /api/loans/:id/status
+ * @desc    Retrieve status and complete status history timeline for a loan
+ * @access  Public
+ */
+router.get("/:id/status", async (req, res) => {
+  try {
+    const loan = await Loan.findById(req.params.id);
+    if (!loan) {
+      return res.status(404).json({
+        success: false,
+        message: "Loan application not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      loanId: loan._id,
+      borrower: loan.borrower,
+      status: loan.status,
+      statusHistory: loan.statusHistory,
+      createdAt: loan.createdAt,
+      updatedAt: loan.updatedAt,
+    });
+  } catch (error) {
+    console.error("Fetch loan status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching loan status history",
+    });
+  }
+});
+
+/**
+ * @route   GET /api/loans/:id
+ * @desc    Get single loan application details by ID
+ * @access  Public
+ */
+router.get("/:id", async (req, res) => {
+  try {
+    const loan = await Loan.findById(req.params.id);
+    if (!loan) {
+      return res.status(404).json({
+        success: false,
+        message: "Loan application not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      loan,
+    });
+  } catch (error) {
+    console.error("Fetch single loan application error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching loan application",
+    });
+  }
+});
+
+/**
  * @route   POST /api/loans/:id/approve
  * @desc    Approve a pending loan application
  * @access  Public
