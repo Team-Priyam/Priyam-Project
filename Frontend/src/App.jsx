@@ -31,6 +31,8 @@ function App() {
   const [loans, setLoans] = useState([]);
   const [pendingLoans, setPendingLoans] = useState([]);
   const [overdueLoans, setOverdueLoans] = useState([]);
+  const [loadingOverdue, setLoadingOverdue] = useState(false);
+  const [overdueError, setOverdueError] = useState("");
   const [borrowers, setBorrowers] = useState([]);
   const [users, setUsers] = useState([]);
   const [selectedLoan, setSelectedLoan] = useState(null);
@@ -287,6 +289,8 @@ function App() {
   };
 
   const fetchOverdueLoans = async () => {
+    setLoadingOverdue(true);
+    setOverdueError("");
     try {
       const res = await fetch("/api/loans/overdue", {
         headers: {
@@ -296,9 +300,14 @@ function App() {
       if (res.ok) {
         const data = await res.json();
         setOverdueLoans(data.loans || []);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setOverdueError(errData.message || "Failed to retrieve overdue loans.");
       }
     } catch (_err) {
-      console.error("Error connecting to backend for overdue repayments.");
+      setOverdueError("Connection error retrieving overdue loan repayments.");
+    } finally {
+      setLoadingOverdue(false);
     }
   };
 
@@ -1269,8 +1278,11 @@ function App() {
           {/* Overdue Repayments Dashboard Widget */}
           <OverdueLoansWidget
             overdueLoans={overdueLoans}
+            loading={loadingOverdue}
+            error={overdueError}
             token={token}
             onRepaymentRecorded={handleRepaymentRecorded}
+            onRetry={fetchOverdueLoans}
           />
 
           {/* Loans Grid */}
@@ -1417,8 +1429,11 @@ function App() {
           {/* Overdue Repayments Dashboard Widget */}
           <OverdueLoansWidget
             overdueLoans={overdueLoans}
+            loading={loadingOverdue}
+            error={overdueError}
             token={token}
             onRepaymentRecorded={handleRepaymentRecorded}
+            onRetry={fetchOverdueLoans}
           />
 
           {/* Review Center Grid */}

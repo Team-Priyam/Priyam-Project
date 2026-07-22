@@ -35,7 +35,14 @@ const getDaysOverdue = (dateStr) => {
   }
 };
 
-const OverdueLoansWidget = ({ overdueLoans = [], token, onRepaymentRecorded }) => {
+const OverdueLoansWidget = ({
+  overdueLoans = [],
+  loading = false,
+  error = null,
+  token,
+  onRepaymentRecorded,
+  onRetry,
+}) => {
   const [repayModalLoan, setRepayModalLoan] = useState(null);
   const [repayAmount, setRepayAmount] = useState("");
   const [repayNote, setRepayNote] = useState("");
@@ -135,8 +142,32 @@ const OverdueLoansWidget = ({ overdueLoans = [], token, onRepaymentRecorded }) =
         </div>
       </div>
 
-      {/* Overdue Loans List */}
-      {overdueLoans.length === 0 ? (
+      {/* Loading State */}
+      {loading ? (
+        <div className="overdue-loading-state">
+          <div className="overdue-skeleton-card"></div>
+          <div className="overdue-skeleton-card"></div>
+        </div>
+      ) : error ? (
+        /* Error State */
+        <div className="overdue-error-state">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="36" height="36">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h4>Failed to Load Overdue Repayments</h4>
+          <p>{error}</p>
+          {onRetry && (
+            <button type="button" className="btn-record-repayment" onClick={onRetry} style={{ marginTop: "0.75rem" }}>
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Retry Loading
+            </button>
+          )}
+        </div>
+      ) : overdueLoans.length === 0 ? (
+        /* Empty State */
+        <div className="overdue-empty-state">
         <div className="overdue-empty-state">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
