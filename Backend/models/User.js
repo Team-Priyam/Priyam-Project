@@ -28,6 +28,15 @@ const userSchema = new mongoose.Schema(
       },
       default: "officer",
     },
+    notificationPreferences: {
+      repaymentReminders: { type: Boolean, default: true },
+      overdueAlerts: { type: Boolean, default: true },
+      applicationUpdates: { type: Boolean, default: true },
+      systemDigest: { type: Boolean, default: false },
+      emailNotifications: { type: Boolean, default: true },
+      pushNotifications: { type: Boolean, default: true },
+      smsNotifications: { type: Boolean, default: false },
+    },
   },
   {
     timestamps: true,

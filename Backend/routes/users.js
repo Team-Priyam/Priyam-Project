@@ -133,4 +133,73 @@ router.delete("/:id", protect, adminOnly, async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/users/preferences
+ * @desc    Get notification preferences for the logged-in user
+ * @access  Private
+ */
+router.get("/preferences", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("notificationPreferences name email role");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const defaultPrefs = {
+      repaymentReminders: true,
+      overdueAlerts: true,
+      applicationUpdates: true,
+      systemDigest: false,
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    };
+
+    const preferences = { ...defaultPrefs, ...(user.notificationPreferences?.toObject ? user.notificationPreferences.toObject() : user.notificationPreferences || {}) };
+
+    res.json({
+      success: true,
+      preferences,
+    });
+  } catch (error) {
+    console.error("Get preferences error:", error);
+    res.status(500).json({ success: false, message: "Server error retrieving preferences" });
+  }
+});
+
+/**
+ * @route   PUT /api/users/preferences
+ * @desc    Update notification preferences for the logged-in user
+ * @access  Private
+ */
+router.put("/preferences", protect, async (req, res) => {
+  try {
+    const { preferences } = req.body;
+    if (!preferences || typeof preferences !== "object") {
+      return res.status(400).json({ success: false, message: "Invalid preferences data provided" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    user.notificationPreferences = {
+      ...user.notificationPreferences,
+      ...preferences,
+    };
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Notification preferences saved successfully!",
+      preferences: user.notificationPreferences,
+    });
+  } catch (error) {
+    console.error("Update preferences error:", error);
+    res.status(500).json({ success: false, message: "Server error saving preferences" });
+  }
+});
+
 export default router;
