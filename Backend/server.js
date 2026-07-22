@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import loanRoutes from "./routes/loans.js";
 import borrowerRoutes from "./routes/borrowers.js";
+import repaymentRoutes from "./routes/repayments.js";
 
 // Load environment variables
 dotenv.config();
@@ -22,6 +23,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/loans", loanRoutes);
 app.use("/api/borrowers", borrowerRoutes);
+app.use("/api/repayments", repaymentRoutes);
 
 
 // Base route
