@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import LoanApplicationForm from "./components/LoanApplicationForm";
 import BorrowerForm from "./components/BorrowerForm";
 import LoanStatusTimeline from "./components/LoanStatusTimeline";
+import OverdueLoansWidget from "./components/OverdueLoansWidget";
 import "./App.css";
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
   // App Data States
   const [loans, setLoans] = useState([]);
   const [pendingLoans, setPendingLoans] = useState([]);
+  const [overdueLoans, setOverdueLoans] = useState([]);
   const [borrowers, setBorrowers] = useState([]);
   const [users, setUsers] = useState([]);
   const [selectedLoan, setSelectedLoan] = useState(null);
@@ -95,6 +97,7 @@ function App() {
       // Fetch base platform data
       fetchLoans();
       fetchPendingLoans();
+      fetchOverdueLoans();
       fetchBorrowers();
     }
   }, [token, currentUser?.role]);
@@ -105,6 +108,7 @@ function App() {
       const interval = setInterval(() => {
         fetchLoans();
         fetchPendingLoans();
+        fetchOverdueLoans();
       }, 5000); // poll every 5 seconds for real-time updates
       return () => clearInterval(interval);
     }
@@ -280,6 +284,29 @@ function App() {
     } catch (err) {
       showNotification("error", "Error connecting to backend for pending applications.");
     }
+  };
+
+  const fetchOverdueLoans = async () => {
+    try {
+      const res = await fetch("/api/loans/overdue", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOverdueLoans(data.loans || []);
+      }
+    } catch (_err) {
+      console.error("Error connecting to backend for overdue repayments.");
+    }
+  };
+
+  const handleRepaymentRecorded = (_updatedLoan) => {
+    showNotification("success", "Repayment recorded successfully!");
+    fetchLoans();
+    fetchPendingLoans();
+    fetchOverdueLoans();
   };
 
   const fetchBorrowers = async () => {
@@ -1238,15 +1265,23 @@ function App() {
           </section>
         </main>
       ) : activeTab === "loans" && (currentUser.role === "admin" || currentUser.role === "lender") ? (
-        /* Loans Grid */
-        <main className="dashboard-grid">
-          {/* Left Side: Create Loan Application Card */}
-          <section>
-            <LoanApplicationForm
-              onCancel={() => showNotification("info", "Form inputs cleared.")}
-              onSubmitSuccess={handleLoanSubmitSuccess}
-            />
-          </section>
+        <div>
+          {/* Overdue Repayments Dashboard Widget */}
+          <OverdueLoansWidget
+            overdueLoans={overdueLoans}
+            token={token}
+            onRepaymentRecorded={handleRepaymentRecorded}
+          />
+
+          {/* Loans Grid */}
+          <main className="dashboard-grid">
+            {/* Left Side: Create Loan Application Card */}
+            <section>
+              <LoanApplicationForm
+                onCancel={() => showNotification("info", "Form inputs cleared.")}
+                onSubmitSuccess={handleLoanSubmitSuccess}
+              />
+            </section>
 
           {/* Right Side: Submitted Loan Applications Directory */}
           <section className="glass-card">
@@ -1378,8 +1413,16 @@ function App() {
           </section>
         </main>
       ) : activeTab === "review" && (currentUser.role === "admin" || currentUser.role === "officer") ? (
-        /* Review Center Grid */
-        <main className="dashboard-grid">
+        <div>
+          {/* Overdue Repayments Dashboard Widget */}
+          <OverdueLoansWidget
+            overdueLoans={overdueLoans}
+            token={token}
+            onRepaymentRecorded={handleRepaymentRecorded}
+          />
+
+          {/* Review Center Grid */}
+          <main className="dashboard-grid">
           {/* Left Side: Pending Applications List */}
           <section className="glass-card">
             <div className="list-header">
@@ -1549,6 +1592,7 @@ function App() {
             )}
           </section>
         </main>
+      </div>
       ) : (
         /* Unauthorized view or invalid tab for the role */
         <div className="glass-card text-center" style={{ padding: "5rem 2rem" }}>

@@ -27,6 +27,42 @@ const loanSchema = new mongoose.Schema(
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
+    dueDate: {
+      type: Date,
+      default: null,
+    },
+    monthlyInstallment: {
+      type: Number,
+      default: 0,
+    },
+    totalPaid: {
+      type: Number,
+      default: 0,
+    },
+    overdueAmount: {
+      type: Number,
+      default: 0,
+    },
+    repayments: [
+      {
+        amount: {
+          type: Number,
+          required: true,
+        },
+        paidAt: {
+          type: Date,
+          default: Date.now,
+        },
+        recordedBy: {
+          type: String,
+          default: "System/Officer",
+        },
+        note: {
+          type: String,
+          default: "",
+        },
+      },
+    ],
     statusHistory: [
       {
         status: {

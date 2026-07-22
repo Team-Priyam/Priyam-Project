@@ -172,6 +172,127 @@ router.get("/:id", async (req, res) => {
 });
 
 /**
+ * @route   GET /api/loans/overdue
+ * @desc    Get all loans with overdue repayments
+ * @access  Public
+ */
+router.get("/overdue", async (req, res) => {
+  try {
+    const allApproved = await Loan.find({ status: "approved" }).sort({ createdAt: -1 });
+
+    const overdueLoans = [];
+    const now = new Date();
+
+    for (const loan of allApproved) {
+      const installment = loan.monthlyInstallment || Math.round(loan.amount / loan.term);
+
+      // If dueDate is not set, set default to 5 days ago (so approved loans default to overdue for tracking)
+      if (!loan.dueDate) {
+        loan.dueDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+        loan.monthlyInstallment = installment;
+        if (loan.overdueAmount === 0 && loan.totalPaid < loan.amount) {
+          loan.overdueAmount = Math.min(installment, loan.amount - loan.totalPaid);
+        }
+        await loan.save();
+      }
+
+      // Check if overdue
+      const isPastDue = new Date(loan.dueDate) < now;
+      const remainingBalance = loan.amount - (loan.totalPaid || 0);
+
+      if (remainingBalance > 0 && (loan.overdueAmount > 0 || isPastDue)) {
+        // Ensure overdueAmount has a positive value
+        if (loan.overdueAmount <= 0) {
+          loan.overdueAmount = Math.min(installment, remainingBalance);
+          await loan.save();
+        }
+        overdueLoans.push(loan);
+      }
+    }
+
+    const totalOverdueAmount = overdueLoans.reduce((sum, l) => sum + (l.overdueAmount || 0), 0);
+
+    res.json({
+      success: true,
+      count: overdueLoans.length,
+      totalOverdueAmount,
+      loans: overdueLoans,
+    });
+  } catch (error) {
+    console.error("Fetch overdue loans error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error fetching overdue loans",
+    });
+  }
+});
+
+/**
+ * @route   POST /api/loans/:id/repay
+ * @desc    Record a repayment for a loan application
+ * @access  Public
+ */
+router.post("/:id/repay", async (req, res) => {
+  try {
+    const { amount, note, user } = req.body;
+    const numAmount = Number(amount);
+
+    if (isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Repayment amount must be a positive number",
+      });
+    }
+
+    const loan = await Loan.findById(req.params.id);
+    if (!loan) {
+      return res.status(404).json({
+        success: false,
+        message: "Loan application not found",
+      });
+    }
+
+    // Record repayment transaction
+    loan.totalPaid = (loan.totalPaid || 0) + numAmount;
+    loan.overdueAmount = Math.max(0, (loan.overdueAmount || 0) - numAmount);
+    
+    loan.repayments.push({
+      amount: numAmount,
+      paidAt: new Date(),
+      recordedBy: user || "Officer/Lender",
+      note: note || "Repayment recorded",
+    });
+
+    loan.statusHistory.push({
+      status: loan.status,
+      action: "repayment_recorded",
+      timestamp: new Date(),
+      user: user || "Officer/Lender",
+      note: `Recorded repayment of $${numAmount.toLocaleString()}${note ? `. ${note}` : ""}`,
+    });
+
+    // Reset due date into future if overdue balance is cleared
+    if (loan.overdueAmount === 0) {
+      loan.dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    }
+
+    await loan.save();
+
+    res.json({
+      success: true,
+      message: `Repayment of $${numAmount.toLocaleString()} recorded successfully`,
+      loan,
+    });
+  } catch (error) {
+    console.error("Record repayment error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error recording repayment",
+    });
+  }
+});
+
+/**
  * @route   POST /api/loans/:id/approve
  * @desc    Approve a pending loan application
  * @access  Public
@@ -194,7 +315,13 @@ router.post("/:id/approve", async (req, res) => {
       });
     }
 
+    const installment = Math.round(loan.amount / loan.term);
+
     loan.status = "approved";
+    loan.monthlyInstallment = installment;
+    loan.dueDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000); // Set 5 days past due for active tracking
+    loan.overdueAmount = installment;
+
     loan.statusHistory.push({
       status: "approved",
       action: "approved",

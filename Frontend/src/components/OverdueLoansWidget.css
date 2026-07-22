@@ -1,0 +1,402 @@
+/* Overdue Loans Widget Styling */
+.overdue-widget-card {
+  margin-bottom: 2rem;
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.overdue-widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.overdue-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.overdue-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f87171;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+}
+
+.overdue-icon-badge svg {
+  width: 22px;
+  height: 22px;
+}
+
+.overdue-widget-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.overdue-widget-subtitle {
+  font-size: 0.825rem;
+  color: var(--text-secondary);
+}
+
+.overdue-stats-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.overdue-count-pill {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+}
+
+.overdue-amount-pill {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+}
+
+/* Empty state */
+.overdue-empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+}
+
+.overdue-empty-state svg {
+  width: 48px;
+  height: 48px;
+  color: var(--success);
+  margin-bottom: 0.75rem;
+  opacity: 0.8;
+}
+
+.overdue-empty-state h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.overdue-empty-state p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* List of Overdue items */
+.overdue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* Severity & Distinct Visual Highlighting */
+.overdue-item-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px 2.2fr 1.25fr 1.25fr 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+/* Critical Overdue Item Highlight (Severe) */
+.overdue-item-critical {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(185, 28, 28, 0.03) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-left: 5px solid #ef4444;
+  box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.05);
+}
+
+.overdue-item-critical:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.14) 0%, rgba(185, 28, 28, 0.07) 100%);
+  border-color: rgba(239, 68, 68, 0.6);
+  border-left-color: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.2);
+}
+
+/* Warning Overdue Item Highlight (Moderate) */
+.overdue-item-warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, rgba(217, 119, 6, 0.02) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-left: 5px solid #f59e0b;
+}
+
+.overdue-item-warning:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.05) 100%);
+  border-color: rgba(245, 158, 11, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.15);
+}
+
+/* Pulse indicator dot */
+.overdue-status-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  position: relative;
+  display: inline-block;
+}
+
+.pulse-dot-critical {
+  background-color: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: pulse-red 1.8s infinite ease-in-out;
+}
+
+.pulse-dot-warning {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+  animation: pulse-amber 2.2s infinite ease-in-out;
+}
+
+@keyframes pulse-red {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+@keyframes pulse-amber {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+  70% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+.overdue-item-borrower {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.avatar-critical {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4) !important;
+}
+
+.avatar-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3) !important;
+}
+
+.overdue-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fff;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.overdue-borrower-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.overdue-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.overdue-borrower-name {
+  font-size: 0.975rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.overdue-severity-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.badge-critical {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.overdue-loan-meta {
+  font-size: 0.775rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+  margin-top: 1px;
+}
+
+.overdue-item-duedate {
+  display: flex;
+  flex-direction: column;
+}
+
+.overdue-date-lbl {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.overdue-date-val {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.overdue-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.725rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-top: 3px;
+  width: fit-content;
+}
+
+.pill-critical {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.pill-warning {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.highlighted-amount-box {
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.4rem 0.75rem;
+  border-radius: 10px;
+}
+
+.overdue-amt-lbl {
+  font-size: 0.675rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.overdue-amt-val {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ef4444;
+  text-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
+.overdue-item-action {
+  text-align: right;
+}
+
+.btn-record-repayment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  font-size: 0.825rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.btn-record-repayment:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+  transform: translateY(-1px);
+}
+
+.btn-record-repayment svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 900px) {
+  .overdue-item-card {
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .overdue-status-indicator {
+    display: none;
+  }
+  .overdue-item-action {
+    grid-column: span 2;
+    text-align: left;
+  }
+}
