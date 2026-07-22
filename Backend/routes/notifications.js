@@ -1,17 +1,25 @@
 import express from "express";
 import Notification from "../models/Notification.js";
 import Loan from "../models/Loan.js";
+import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
 /**
  * @route   GET /api/notifications
- * @desc    Get all recent notifications for loan officers, grouped and sorted
- * @access  Public
+ * @desc    Get all recent notifications for logged-in loan officer / user
+ * @access  Private
  */
-router.get("/", async (req, res) => {
+router.get("/", protect, async (req, res) => {
   try {
-    let notifications = await Notification.find({}).sort({ createdAt: -1 }).limit(50);
+    const userRole = req.user?.role || "officer";
+    const userEmail = req.user?.email || "";
+
+    let notifications = await Notification.find({
+      $or: [{ recipient: "all" }, { recipient: userRole }, { recipient: userEmail }],
+    })
+      .sort({ createdAt: -1 })
+      .limit(50);
 
     // If notifications collection is empty, dynamically generate seed notifications from active loans
     if (notifications.length === 0) {
@@ -92,9 +100,9 @@ router.get("/", async (req, res) => {
 /**
  * @route   PUT /api/notifications/:id/read
  * @desc    Mark a single notification as read
- * @access  Public
+ * @access  Private
  */
-router.put("/:id/read", async (req, res) => {
+router.put("/:id/read", protect, async (req, res) => {
   try {
     const notification = await Notification.findByIdAndUpdate(
       req.params.id,
@@ -119,9 +127,9 @@ router.put("/:id/read", async (req, res) => {
 /**
  * @route   PUT /api/notifications/read-all
  * @desc    Mark all notifications as read
- * @access  Public
+ * @access  Private
  */
-router.put("/read-all", async (req, res) => {
+router.put("/read-all", protect, async (req, res) => {
   try {
     await Notification.updateMany({ isRead: false }, { isRead: true });
 
