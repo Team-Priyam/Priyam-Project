@@ -1165,33 +1165,72 @@ function App() {
                       <th>Borrower Details</th>
                       <th>Identification Proof</th>
                       <th>Residential Address</th>
+                      <th>Loan Applications</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {borrowers.map((borrower) => (
-                      <tr key={borrower._id}>
-                        <td>
-                          <div className="user-name-cell">
-                            <div className="user-avatar" style={{ background: "linear-gradient(135deg, #10b981 0%, #6366f1 100%)" }}>
-                              {borrower.name.charAt(0).toUpperCase()}
+                    {borrowers.map((borrower) => {
+                      const borrowerLoans = loans.filter(
+                        (l) => l.borrower?.toLowerCase().trim() === borrower.name?.toLowerCase().trim()
+                      );
+                      const latestLoan = borrowerLoans.length > 0 ? borrowerLoans[0] : null;
+
+                      return (
+                        <tr key={borrower._id}>
+                          <td>
+                            <div className="user-name-cell">
+                              <div className="user-avatar" style={{ background: "linear-gradient(135deg, #10b981 0%, #6366f1 100%)" }}>
+                                {borrower.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="user-details">
+                                <span style={{ fontWeight: 500 }}>{borrower.name}</span>
+                                <span className="user-email">Mobile: {borrower.contact}</span>
+                              </div>
                             </div>
-                            <div className="user-details">
-                              <span style={{ fontWeight: 500 }}>{borrower.name}</span>
-                              <span className="user-email">Mobile: {borrower.contact}</span>
+                          </td>
+                          <td>
+                            <span style={{ fontWeight: 500 }}>{borrower.idProof?.type}</span>
+                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                              No: <span style={{ fontFamily: "monospace", letterSpacing: "1px" }}>{borrower.idProof?.number}</span>
                             </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span style={{ fontWeight: 500 }}>{borrower.idProof?.type}</span>
-                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                            No: <span style={{ fontFamily: "monospace", letterSpacing: "1px" }}>{borrower.idProof?.number}</span>
-                          </div>
-                        </td>
-                        <td style={{ fontSize: "0.9rem", color: "var(--text-secondary)", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={borrower.address}>
-                          {borrower.address}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td style={{ fontSize: "0.9rem", color: "var(--text-secondary)", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={borrower.address}>
+                            {borrower.address}
+                          </td>
+                          <td>
+                            {latestLoan ? (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedLoanDetails(latestLoan)}
+                                className="btn-view-timeline"
+                                title="View Loan Status Tracker Timeline"
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  padding: "0.35rem 0.65rem",
+                                  borderRadius: "8px",
+                                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                                  background: "rgba(16, 185, 129, 0.1)",
+                                  color: "#34d399",
+                                  fontSize: "0.775rem",
+                                  fontWeight: 500,
+                                  cursor: "pointer"
+                                }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="14" height="14">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                {(latestLoan.status || "Pending").toUpperCase()} Timeline
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>No loans registered</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
