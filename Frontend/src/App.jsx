@@ -404,14 +404,29 @@ function App() {
 
   const handleSelectNotification = (notif) => {
     if (!notif) return;
+
+    // 1. Match loan details if loanId is present
     if (notif.loanId) {
-      const match = loans.find((l) => l._id === notif.loanId);
+      const match = loans.find((l) => l._id === notif.loanId) || pendingLoans.find((l) => l._id === notif.loanId);
       if (match) {
+        if (match.status === "pending" && (currentUser?.role === "admin" || currentUser?.role === "officer")) {
+          setActiveTab("review");
+          setSelectedLoan(match);
+        }
         setSelectedLoanDetails(match);
+        showNotification("info", `Opened loan tracking details for borrower "${notif.borrower}".`);
         return;
       }
     }
-    showNotification("info", `Selected alert for borrower: "${notif.borrower}"`);
+
+    // 2. Fallback: navigate to borrower profiles tab if borrower exists
+    if (notif.borrower) {
+      setActiveTab("borrowers");
+      showNotification("info", `Navigated to borrower profile for "${notif.borrower}".`);
+      return;
+    }
+
+    showNotification("info", `Selected alert: "${notif.title}"`);
   };
 
   const validateEmail = (emailStr) => {
