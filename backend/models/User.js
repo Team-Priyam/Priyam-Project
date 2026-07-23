@@ -1,6 +1,12 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
+const ROLES = {
+  LENDER: "Lender",
+  LOAN_OFFICER: "LoanOfficer",
+  ADMIN: "Admin",
+};
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -22,8 +28,9 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["Lender", "LoanOfficer", "Admin"],
-      default: "Lender",
+      enum: Object.values(ROLES),
+      default: ROLES.LENDER,
+      required: [true, "Role is required"],
     },
     village: {
       type: String,
@@ -53,4 +60,6 @@ userSchema.pre("save", async function () {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-module.exports = mongoose.model("User", userSchema);
+const User = mongoose.model("User", userSchema);
+User.ROLES = ROLES;
+module.exports = User;

@@ -2,9 +2,9 @@ const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
-const generateToken = (id) => {
+const generateToken = (id, role) => {
   return jwt.sign(
-    { id },
+    { id, role },
     process.env.JWT_SECRET || "supersecretkey_rural_microfinance_2026",
     {
       expiresIn: "30d",
@@ -92,7 +92,7 @@ const updateUserProfile = async (req, res) => {
       role: updatedUser.role,
       village: updatedUser.village,
       phone: updatedUser.phone,
-      token: generateToken(updatedUser._id),
+      token: generateToken(updatedUser._id, updatedUser.role),
     });
   } catch (error) {
     console.error("Profile update error:", error);
@@ -129,7 +129,7 @@ const registerUser = async (req, res) => {
         role: user.role,
         village: user.village,
         phone: user.phone,
-        token: generateToken(user._id),
+        token: generateToken(user._id, user.role),
       });
     } else {
       res.status(400).json({ message: "Invalid user data" });
@@ -156,7 +156,7 @@ const loginUser = async (req, res) => {
         role: user.role,
         village: user.village,
         phone: user.phone,
-        token: generateToken(user._id),
+        token: generateToken(user._id, user.role),
       });
     } else {
       res.status(401).json({ message: "Invalid email or password" });
