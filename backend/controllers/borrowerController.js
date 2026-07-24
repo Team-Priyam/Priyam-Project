@@ -249,9 +249,119 @@ const createBorrower = async (req, res) => {
   }
 };
 
+// @desc    Record new repayment against borrower loan
+// @route   POST /api/borrowers/:id/repayments
+// @access  Protected
+const addRepayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount, date, mode, notes } = req.body;
+
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({ message: "Repayment amount must be a positive number greater than 0" });
+    }
+
+    if (!mode) {
+      return res.status(400).json({ message: "Payment method is required" });
+    }
+
+    let borrower;
+    let isDbModel = false;
+
+    try {
+      if (id.match(/^[0-9a-fA-F]{24}$/)) {
+        borrower = await Borrower.findById(id);
+      } else {
+        borrower = await Borrower.findOne({
+          $or: [{ _id: id }, { borrowerCode: id }],
+        });
+      }
+      if (borrower) isDbModel = true;
+    } catch (dbErr) {
+      // Fallback if database is disconnected
+    }
+
+    if (!borrower) {
+      borrower = DEMO_BORROWERS.find(
+        (b) => b._id === id || b.borrowerCode === id
+      );
+    }
+
+    if (!borrower) {
+      return res.status(404).json({ message: "Borrower record not found" });
+    }
+
+    // Generate receipt number
+    const receiptNo = `RCP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newActivity = {
+      id: `act_${Date.now()}`,
+      type: "Repayment",
+      amount: numericAmount,
+      date: date ? new Date(date) : new Date(),
+      mode: mode || "Cash (Field Collection)",
+      receiptNo,
+      status: "Completed",
+      notes: notes || "",
+    };
+
+    if (isDbModel) {
+      borrower.activities.unshift(newActivity);
+      const totalRepaid = (borrower.financials?.totalRepaid || 0) + numericAmount;
+      const totalBorrowed = borrower.financials?.totalBorrowed || 0;
+      const currentBalance = Math.max(0, totalBorrowed - totalRepaid);
+      let status = borrower.financials?.status || "Active";
+      if (currentBalance === 0) {
+        status = "Cleared";
+      } else if (status === "Overdue" && currentBalance > 0) {
+        status = "Active";
+      }
+
+      borrower.financials = {
+        ...borrower.financials,
+        totalRepaid,
+        currentBalance,
+        status,
+      };
+
+      await borrower.save();
+    } else {
+      // Update demo borrower object in memory
+      if (!borrower.activities) borrower.activities = [];
+      borrower.activities.unshift(newActivity);
+
+      const totalRepaid = (borrower.financials?.totalRepaid || 0) + numericAmount;
+      const totalBorrowed = borrower.financials?.totalBorrowed || 0;
+      const currentBalance = Math.max(0, totalBorrowed - totalRepaid);
+      let status = borrower.financials?.status || "Active";
+      if (currentBalance === 0) {
+        status = "Cleared";
+      }
+
+      borrower.financials = {
+        ...borrower.financials,
+        totalRepaid,
+        currentBalance,
+        status,
+      };
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: `Repayment of ₹${numericAmount.toLocaleString("en-IN")} saved successfully`,
+      receiptNo,
+      data: borrower,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message || "Failed to record repayment" });
+  }
+};
+
 module.exports = {
   getBorrowers,
   getBorrowerById,
   createBorrower,
+  addRepayment,
   DEMO_BORROWERS,
 };
+

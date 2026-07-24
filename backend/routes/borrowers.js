@@ -4,6 +4,7 @@ const {
   getBorrowers,
   getBorrowerById,
   createBorrower,
+  addRepayment,
 } = require("../controllers/borrowerController");
 const { protect } = require("../middleware/auth");
 
@@ -17,4 +18,8 @@ router.route("/")
 router.route("/:id")
   .get(getBorrowerById);
 
+router.route("/:id/repayments")
+  .post(addRepayment);
+
 module.exports = router;
+

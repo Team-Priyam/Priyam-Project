@@ -17,8 +17,10 @@ import {
   Activity,
   FileText,
   RotateCcw,
+  PlusCircle,
 } from "lucide-react";
-import { getBorrowerDetail } from "../services/api";
+import { getBorrowerDetail, recordRepayment } from "../services/api";
+import RepaymentModal from "./RepaymentModal";
 
 export default function BorrowerDetail({
   borrowerId = "bw_8842",
@@ -30,14 +32,20 @@ export default function BorrowerDetail({
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState(null);
 
+  // Modal and submission states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [actionError, setActionError] = useState("");
+
   // Mock demo dataset for robust offline / preview display
   const demoBorrower = {
     _id: "bw_8842",
     borrowerCode: "BW-2024-8842",
     name: "Sunita Devi",
-    photoUrl: null, // Test fallback avatar
+    photoUrl: null,
     phone: "+91 94123 89012",
-    secondaryPhone: null, // Test missing secondary phone
+    secondaryPhone: null,
     village: "East Rampur Village",
     address: "House 42, Near Panchayat Bhavan, East Rampur",
     kycType: "Aadhaar Card",
@@ -51,7 +59,7 @@ export default function BorrowerDetail({
       totalRepaid: 35000,
       currentBalance: 15000,
       activeLoansCount: 1,
-      status: "Active", // 'Active', 'Overdue', 'Cleared'
+      status: "Active",
     },
     activities: [
       {
@@ -105,7 +113,6 @@ export default function BorrowerDetail({
     } catch (err) {
       console.warn("API fetch error for borrower:", err.message);
       setError(err.message || "Failed to load borrower records from backend API");
-      // Fall back to demo data if in demo environment
       if (!token || token === "demo_jwt_token_123") {
         setBorrower(demoBorrower);
       }
@@ -117,6 +124,72 @@ export default function BorrowerDetail({
   useEffect(() => {
     fetchDetail();
   }, [borrowerId, token, initialData]);
+
+  // Handle Repayment Submission to Backend API
+  const handleRepaymentSubmit = async (repaymentData) => {
+    const targetId = borrower?._id || borrowerId || "bw_8842";
+    setSubmitting(true);
+    setActionError("");
+    setSuccessMessage("");
+
+    try {
+      const response = await recordRepayment(targetId, repaymentData, token);
+
+      if (response && response.success) {
+        const updatedBorrower = response.data || response.borrower;
+        if (updatedBorrower) {
+          setBorrower(updatedBorrower);
+        } else {
+          // Fallback manual state update if needed
+          setBorrower((prev) => {
+            const currentObj = prev || demoBorrower;
+            const newTotalRepaid = (currentObj.financials?.totalRepaid || 0) + repaymentData.amount;
+            const newBalance = Math.max(0, (currentObj.financials?.totalBorrowed || 0) - newTotalRepaid);
+            const receiptNo = response.receiptNo || `RCP-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+
+            const newAct = {
+              id: `act_${Date.now()}`,
+              type: "Repayment",
+              amount: repaymentData.amount,
+              date: repaymentData.date,
+              mode: repaymentData.mode,
+              receiptNo,
+              status: "Completed",
+            };
+
+            return {
+              ...currentObj,
+              financials: {
+                ...currentObj.financials,
+                totalRepaid: newTotalRepaid,
+                currentBalance: newBalance,
+                status: newBalance === 0 ? "Cleared" : currentObj.financials?.status || "Active",
+              },
+              activities: [newAct, ...(currentObj.activities || [])],
+            };
+          });
+        }
+
+        setSuccessMessage(
+          response.message ||
+            `Repayment of ₹${repaymentData.amount.toLocaleString("en-IN")} recorded successfully! Receipt: ${response.receiptNo || "Generated"}`
+        );
+        setIsModalOpen(false);
+
+        // Auto hide success alert after 6 seconds
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 6000);
+      } else {
+        throw new Error(response?.message || "Failed to process repayment");
+      }
+    } catch (err) {
+      console.error("Repayment recording failed:", err);
+      setActionError(err.message || "Failed to save repayment to backend API.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -170,6 +243,8 @@ export default function BorrowerDetail({
       })
     : "N/A";
 
+  const isCleared = b.financials?.currentBalance === 0;
+
   return (
     <div className="borrower-detail-container">
       {/* Navigation & Header Toolbar */}
@@ -179,7 +254,19 @@ export default function BorrowerDetail({
             <ArrowLeft size={18} /> Back to Borrower List
           </button>
         )}
-        <div className="toolbar-actions">
+        <div className="toolbar-actions" style={{ display: "flex", gap: "0.75rem" }}>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              setActionError("");
+              setIsModalOpen(true);
+            }}
+            id="btn-open-repayment-modal"
+            disabled={isCleared}
+            title={isCleared ? "Loan is already fully repaid and cleared" : "Record a repayment against this loan"}
+          >
+            <PlusCircle size={17} /> Record Repayment
+          </button>
           <a
             href={b.phone ? `tel:${b.phone}` : "#"}
             className={`btn btn-call ${!b.phone ? "disabled" : ""}`}
@@ -188,6 +275,22 @@ export default function BorrowerDetail({
           </a>
         </div>
       </div>
+
+      {/* Global Success Banner */}
+      {successMessage && (
+        <div className="alert alert-success" style={{ marginBottom: "0" }}>
+          <CheckCircle2 size={20} />
+          <span>{successMessage}</span>
+        </div>
+      )}
+
+      {/* Global Action Error Banner */}
+      {actionError && (
+        <div className="alert alert-error" style={{ marginBottom: "0" }}>
+          <AlertTriangle size={20} />
+          <span>{actionError}</span>
+        </div>
+      )}
 
       {/* Main Profile Header Card */}
       <div className="card profile-header-card">
@@ -214,6 +317,17 @@ export default function BorrowerDetail({
                   <ShieldCheck size={13} /> KYC Verified
                 </span>
               )}
+              <span
+                className={`badge ${
+                  b.financials?.status === "Cleared"
+                    ? "badge-cleared"
+                    : b.financials?.status === "Overdue"
+                    ? "badge-overdue"
+                    : "badge-active"
+                }`}
+              >
+                {b.financials?.status || "Active"}
+              </span>
             </div>
 
             <div className="meta-subtext">
@@ -383,7 +497,7 @@ export default function BorrowerDetail({
 
           {b.activities && b.activities.length > 0 ? (
             <div className="activity-timeline">
-              {b.activities.map((act) => {
+              {b.activities.map((act, index) => {
                 const actDate = act.date
                   ? new Date(act.date).toLocaleDateString("en-IN", {
                       day: "numeric",
@@ -395,7 +509,7 @@ export default function BorrowerDetail({
                 const isDisbursed = act.type === "Loan Disbursement";
 
                 return (
-                  <div className="timeline-item" key={act.id}>
+                  <div className="timeline-item" key={act.id || index}>
                     <div
                       className={`timeline-icon-dot ${
                         isDisbursed ? "timeline-icon-disbursed" : "timeline-icon-repayment"
@@ -442,6 +556,17 @@ export default function BorrowerDetail({
           )}
         </div>
       </div>
+
+      {/* Repayment Modal Dialog Component */}
+      <RepaymentModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleRepaymentSubmit}
+        borrowerName={b.name}
+        borrowerCode={b.borrowerCode}
+        currentBalance={b.financials?.currentBalance || 0}
+        loading={submitting}
+      />
     </div>
   );
 }

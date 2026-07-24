@@ -65,3 +65,21 @@ export const getBorrowers = async (searchQuery, token) => {
   }
   return data.data || data;
 };
+
+export const recordRepayment = async (borrowerId, repaymentData, token) => {
+  const response = await fetch(`${API_BASE_URL}/borrowers/${borrowerId}/repayments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(repaymentData),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to record repayment");
+  }
+  return data;
+};
+
