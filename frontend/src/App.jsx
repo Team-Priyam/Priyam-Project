@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import Profile from "./components/Profile";
 import BorrowerDetail from "./components/BorrowerDetail";
-import { Landmark, ShieldCheck, UserCheck, Users, Settings } from "lucide-react";
+import BorrowerList from "./components/BorrowerList";
+import { Landmark, ShieldCheck, Users, Settings } from "lucide-react";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("borrower_detail");
-  const [selectedBorrowerId, setSelectedBorrowerId] = useState("bw_8842");
+  const [activeTab, setActiveTab] = useState("directory");
+  const [selectedBorrowerId, setSelectedBorrowerId] = useState(null);
 
   const [currentUser, setCurrentUser] = useState({
     _id: "usr_101",
@@ -27,11 +28,14 @@ export default function App() {
     }
   };
 
-  const sampleBorrowers = [
-    { id: "bw_8842", label: "Sunita Devi (Active - Complete Profile)" },
-    { id: "bw_9910", label: "Ramesh Patel (Cleared - Full Activity)" },
-    { id: "bw_5521", label: "Anita Sharma (Overdue - Missing Data & No Activity)" },
-  ];
+  const handleSelectBorrower = (id) => {
+    setSelectedBorrowerId(id);
+    setActiveTab("directory");
+  };
+
+  const handleBackToList = () => {
+    setSelectedBorrowerId(null);
+  };
 
   return (
     <div className="app-container">
@@ -44,14 +48,16 @@ export default function App() {
           </div>
         </div>
 
-        {/* View Switcher Tabs */}
+        {/* Navigation Tabs */}
         <nav style={{ display: "flex", gap: "0.5rem" }}>
           <button
-            className={`btn ${activeTab === "borrower_detail" ? "btn-primary" : "btn-back"}`}
-            onClick={() => setActiveTab("borrower_detail")}
+            className={`btn ${activeTab === "directory" ? "btn-primary" : "btn-back"}`}
+            onClick={() => {
+              setActiveTab("directory");
+            }}
             style={{ fontSize: "0.85rem", padding: "0.4rem 0.9rem" }}
           >
-            <UserCheck size={16} /> Borrower Detail
+            <Users size={16} /> Borrower Directory
           </button>
           <button
             className={`btn ${activeTab === "profile" ? "btn-primary" : "btn-back"}`}
@@ -79,43 +85,19 @@ export default function App() {
 
       {/* Main Page Content */}
       <main>
-        {activeTab === "borrower_detail" ? (
-          <div>
-            {/* Quick Borrower Switcher Bar */}
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "1rem",
-              background: "rgba(255,255,255,0.03)",
-              padding: "0.75rem 1rem",
-              borderRadius: "10px",
-              border: "1px solid var(--border-color)"
-            }}>
-              <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                <Users size={16} color="var(--accent-primary)" /> Select Borrower Preview:
-              </span>
-              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                {sampleBorrowers.map((sb) => (
-                  <button
-                    key={sb.id}
-                    className={`btn ${selectedBorrowerId === sb.id ? "btn-primary" : "btn-back"}`}
-                    onClick={() => setSelectedBorrowerId(sb.id)}
-                    style={{ fontSize: "0.775rem", padding: "0.35rem 0.75rem" }}
-                  >
-                    {sb.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
+        {activeTab === "directory" ? (
+          selectedBorrowerId ? (
             <BorrowerDetail
-              key={selectedBorrowerId}
               borrowerId={selectedBorrowerId}
               token={token}
-              onBack={() => setActiveTab("profile")}
+              onBack={handleBackToList}
             />
-          </div>
+          ) : (
+            <BorrowerList
+              token={token}
+              onSelectBorrower={handleSelectBorrower}
+            />
+          )
         ) : (
           <Profile
             token={token}
