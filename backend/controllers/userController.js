@@ -166,9 +166,57 @@ const loginUser = async (req, res) => {
   }
 };
 
+// @desc    Get Lender Dashboard data
+// @route   GET /api/users/lender-dashboard
+// @access  Private (Lender, Admin)
+const getLenderDashboard = async (req, res) => {
+  res.json({
+    message: "Access granted: Lender Financial Dashboard",
+    user: { id: req.user._id || req.tokenData.id, role: req.user.role || req.tokenData.role },
+    data: { totalCapitalDisbursed: 500000, activeLendersCount: 12 },
+  });
+};
+
+// @desc    Get Loan Officer Dashboard data
+// @route   GET /api/users/loanofficer-dashboard
+// @access  Private (LoanOfficer, Admin)
+const getLoanOfficerDashboard = async (req, res) => {
+  res.json({
+    message: "Access granted: Loan Officer Operational Dashboard",
+    user: { id: req.user._id || req.tokenData.id, role: req.user.role || req.tokenData.role },
+    data: { pendingApprovals: 8, activeBorrowersCount: 45 },
+  });
+};
+
+// @desc    Get Admin Panel
+// @route   GET /api/users/admin-panel
+// @access  Private (Admin only)
+const getAdminPanel = async (req, res) => {
+  res.json({
+    message: "Access granted: System Administration Panel",
+    user: { id: req.user._id || req.tokenData.id, role: req.user.role || req.tokenData.role },
+    data: { systemStatus: "Healthy", activeUsers: 150 },
+  });
+};
+
+// @desc    Get Shared Field Ops
+// @route   GET /api/users/shared-field-ops
+// @access  Private (Lender, LoanOfficer, Admin)
+const getSharedFieldOps = async (req, res) => {
+  res.json({
+    message: "Access granted: Shared Village Field Operations",
+    user: { id: req.user._id || req.tokenData.id, role: req.user.role || req.tokenData.role },
+    data: { assignedVillages: ["Central Village", "East Hill"] },
+  });
+};
+
 module.exports = {
   getUserProfile,
   updateUserProfile,
   registerUser,
   loginUser,
+  getLenderDashboard,
+  getLoanOfficerDashboard,
+  getAdminPanel,
+  getSharedFieldOps,
 };
