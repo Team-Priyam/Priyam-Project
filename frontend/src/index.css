@@ -1034,4 +1034,21 @@ body {
   border-top: 1px solid var(--border-color);
 }
 
+.input-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+}
+
+.field-error-text {
+  font-size: 0.775rem;
+  color: #f87171;
+  font-weight: 500;
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  animation: fadeIn 0.2s ease-out;
+}
+
+
 

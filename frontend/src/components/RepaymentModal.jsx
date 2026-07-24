@@ -5,7 +5,6 @@ import {
   CreditCard,
   FileText,
   X,
-  CheckCircle2,
   AlertCircle,
   Clock,
   ShieldCheck,
@@ -28,64 +27,113 @@ export default function RepaymentModal({
   const [notes, setNotes] = useState("");
 
   // Validation & Error states
-  const [validationError, setValidationError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [generalError, setGeneralError] = useState("");
 
   if (!isOpen) return null;
 
+  // Helper to format today's date in local YYYY-MM-DD format
+  const getTodayString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // Field validation rules
+  const validateAmount = (val) => {
+    if (val === "" || val === null || val === undefined) {
+      return "Repayment amount is required.";
+    }
+    const num = Number(val);
+    if (isNaN(num)) {
+      return "Amount must be a valid number.";
+    }
+    if (num <= 0) {
+      return "Amount must be a positive number greater than ₹0.";
+    }
+    if (currentBalance > 0 && num > currentBalance) {
+      return `Amount (₹${num.toLocaleString("en-IN")}) exceeds remaining balance of ₹${currentBalance.toLocaleString("en-IN")}.`;
+    }
+    return "";
+  };
+
+  const validateDate = (val) => {
+    if (!val) {
+      return "Collection date is required.";
+    }
+    const selectedDateStr = val.trim();
+    const todayStr = getTodayString();
+
+    if (selectedDateStr > todayStr) {
+      return "Collection date cannot be in the future.";
+    }
+    return "";
+  };
+
+  const validateMethod = (val) => {
+    if (!val || val.trim() === "") {
+      return "Payment method is required.";
+    }
+    return "";
+  };
+
+  // Event Handlers with Real-Time Validation
   const handleAmountChange = (e) => {
     const val = e.target.value;
     setAmount(val);
-    if (validationError) setValidationError("");
+    const err = validateAmount(val);
+    setFieldErrors((prev) => ({ ...prev, amount: err }));
+    if (generalError) setGeneralError("");
   };
 
   const handleDateChange = (e) => {
-    setDate(e.target.value);
-    if (validationError) setValidationError("");
+    const val = e.target.value;
+    setDate(val);
+    const err = validateDate(val);
+    setFieldErrors((prev) => ({ ...prev, date: err }));
+    if (generalError) setGeneralError("");
   };
 
   const handleMethodChange = (e) => {
-    setPaymentMethod(e.target.value);
-    if (validationError) setValidationError("");
+    const val = e.target.value;
+    setPaymentMethod(val);
+    const err = validateMethod(val);
+    setFieldErrors((prev) => ({ ...prev, paymentMethod: err }));
+    if (generalError) setGeneralError("");
   };
 
+  const handleBlur = (field) => {
+    if (field === "amount") {
+      setFieldErrors((prev) => ({ ...prev, amount: validateAmount(amount) }));
+    } else if (field === "date") {
+      setFieldErrors((prev) => ({ ...prev, date: validateDate(date) }));
+    } else if (field === "paymentMethod") {
+      setFieldErrors((prev) => ({ ...prev, paymentMethod: validateMethod(paymentMethod) }));
+    }
+  };
+
+  // Comprehensive Form Validation on Submission
   const validateForm = () => {
-    const numericAmount = parseFloat(amount);
+    const amountErr = validateAmount(amount);
+    const dateErr = validateDate(date);
+    const methodErr = validateMethod(paymentMethod);
 
-    if (!amount || isNaN(numericAmount)) {
-      setValidationError("Repayment amount is required.");
+    const errors = {};
+    if (amountErr) errors.amount = amountErr;
+    if (dateErr) errors.date = dateErr;
+    if (methodErr) errors.paymentMethod = methodErr;
+
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      const firstErr = amountErr || dateErr || methodErr;
+      setGeneralError(firstErr);
       return false;
     }
 
-    if (numericAmount <= 0) {
-      setValidationError("Repayment amount must be greater than ₹0.");
-      return false;
-    }
-
-    if (numericAmount > currentBalance && currentBalance > 0) {
-      setValidationError(
-        `Repayment amount (₹${numericAmount.toLocaleString("en-IN")}) exceeds the remaining balance (₹${currentBalance.toLocaleString("en-IN")}).`
-      );
-      return false;
-    }
-
-    if (!date) {
-      setValidationError("Collection date is required.");
-      return false;
-    }
-
-    const selectedDate = new Date(date);
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    if (selectedDate > today) {
-      setValidationError("Collection date cannot be in the future.");
-      return false;
-    }
-
-    if (!paymentMethod) {
-      setValidationError("Please select a payment method.");
-      return false;
-    }
-
+    setGeneralError("");
     return true;
   };
 
@@ -104,6 +152,9 @@ export default function RepaymentModal({
       onSubmit(repaymentData);
     }
   };
+
+  const todayDateStr = getTodayString();
+  const hasErrors = Boolean(fieldErrors.amount || fieldErrors.date || fieldErrors.paymentMethod);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -134,16 +185,16 @@ export default function RepaymentModal({
           </div>
         </div>
 
-        {/* Inline Error Message */}
-        {validationError && (
+        {/* General Error Banner */}
+        {generalError && (
           <div className="alert alert-error">
             <AlertCircle size={18} />
-            <span>{validationError}</span>
+            <span>{generalError}</span>
           </div>
         )}
 
         {/* Repayment Input Form */}
-        <form onSubmit={handleSubmit} className="repayment-form">
+        <form onSubmit={handleSubmit} className="repayment-form" noValidate>
           <div className="form-grid">
             {/* Input 1: Repayment Amount */}
             <div className="form-group">
@@ -154,13 +205,14 @@ export default function RepaymentModal({
                 <input
                   id="repayment-amount"
                   type="number"
-                  step="1"
-                  min="1"
+                  step="any"
+                  min="0.01"
                   max={currentBalance || undefined}
-                  className="form-input"
+                  className={`form-input ${fieldErrors.amount ? "input-error" : ""}`}
                   placeholder="e.g. 2500"
                   value={amount}
                   onChange={handleAmountChange}
+                  onBlur={() => handleBlur("amount")}
                   required
                   autoFocus
                 />
@@ -169,13 +221,17 @@ export default function RepaymentModal({
                   className="quick-fill-btn"
                   onClick={() => {
                     setAmount(currentBalance.toString());
-                    setValidationError("");
+                    setFieldErrors((prev) => ({ ...prev, amount: "" }));
+                    setGeneralError("");
                   }}
                   title="Pay Full Balance"
                 >
                   Pay Full
                 </button>
               </div>
+              {fieldErrors.amount && (
+                <span className="field-error-text">{fieldErrors.amount}</span>
+              )}
             </div>
 
             {/* Input 2: Payment Date */}
@@ -187,13 +243,17 @@ export default function RepaymentModal({
                 <input
                   id="repayment-date"
                   type="date"
-                  className="form-input"
+                  className={`form-input ${fieldErrors.date ? "input-error" : ""}`}
                   value={date}
-                  max={new Date().toISOString().split("T")[0]}
+                  max={todayDateStr}
                   onChange={handleDateChange}
+                  onBlur={() => handleBlur("date")}
                   required
                 />
               </div>
+              {fieldErrors.date && (
+                <span className="field-error-text">{fieldErrors.date}</span>
+              )}
             </div>
 
             {/* Input 3: Payment Method Dropdown */}
@@ -203,9 +263,10 @@ export default function RepaymentModal({
               </label>
               <select
                 id="payment-method"
-                className="form-input form-select"
+                className={`form-input form-select ${fieldErrors.paymentMethod ? "input-error" : ""}`}
                 value={paymentMethod}
                 onChange={handleMethodChange}
+                onBlur={() => handleBlur("paymentMethod")}
                 required
               >
                 <option value="Cash (Field Collection)">Cash (Field Collection)</option>
@@ -213,6 +274,9 @@ export default function RepaymentModal({
                 <option value="Bank Transfer">Bank Transfer (NEFT / IMPS)</option>
                 <option value="Cheque">Cheque Deposit</option>
               </select>
+              {fieldErrors.paymentMethod && (
+                <span className="field-error-text">{fieldErrors.paymentMethod}</span>
+              )}
             </div>
 
             {/* Optional Input: Receipt / Collection Notes */}
@@ -244,7 +308,7 @@ export default function RepaymentModal({
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={loading}
+              disabled={loading || hasErrors}
               id="btn-submit-repayment"
             >
               {loading ? (
