@@ -156,6 +156,24 @@ const runRoleMiddlewareTests = async () => {
     assert(officerRes.isNextCalled(), "LoanOfficer granted access to LoanOfficer endpoint");
   }
 
+  // --- Test 9: Verify convenience role middleware helpers ---
+  {
+    const { requireLender, requireLoanOfficer, requireAdmin, checkRole } = require("./middleware/auth");
+    
+    assert(typeof requireLender === "function", "requireLender helper middleware exists");
+    assert(typeof requireLoanOfficer === "function", "requireLoanOfficer helper middleware exists");
+    assert(typeof requireAdmin === "function", "requireAdmin helper middleware exists");
+    assert(typeof checkRole === "function", "checkRole alias helper middleware exists");
+
+    const mockOfficerReq = createMockReqRes({}, null, { role: "LoanOfficer" });
+    requireLoanOfficer(mockOfficerReq.req, mockOfficerReq.res, mockOfficerReq.next);
+    assert(mockOfficerReq.isNextCalled(), "requireLoanOfficer permits LoanOfficer role");
+
+    const mockLenderReq = createMockReqRes({}, null, { role: "LoanOfficer" });
+    requireLender(mockLenderReq.req, mockLenderReq.res, mockLenderReq.next);
+    assert(mockLenderReq.getStatus() === 403, "requireLender denies LoanOfficer role with 403");
+  }
+
   console.log("\n==================================================");
   console.log(`  TEST RESULTS: ${passedTests} PASSED, ${failedTests} FAILED`);
   console.log("==================================================");

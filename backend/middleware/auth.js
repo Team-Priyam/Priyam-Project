@@ -74,9 +74,24 @@ const authorize = (...allowedRoles) => {
       });
     }
 
-    next();
+    return next();
   };
 };
 
-module.exports = { protect, authorize };
+/**
+ * Convenience role middleware shortcuts for common access control scenarios
+ */
+const requireLender = authorize("Lender", "Admin");
+const requireLoanOfficer = authorize("LoanOfficer", "Admin");
+const requireAdmin = authorize("Admin");
+const checkRole = authorize;
+
+module.exports = {
+  protect,
+  authorize,
+  checkRole,
+  requireLender,
+  requireLoanOfficer,
+  requireAdmin,
+};
 
