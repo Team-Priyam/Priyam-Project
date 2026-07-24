@@ -16,6 +16,7 @@ import {
   PhoneCall,
   Activity,
   FileText,
+  RotateCcw,
 } from "lucide-react";
 import { getBorrowerDetail } from "../services/api";
 
@@ -83,46 +84,49 @@ export default function BorrowerDetail({
     ],
   };
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchDetail = async () => {
     if (initialData) {
       setBorrower(initialData);
       setLoading(false);
+      setError(null);
       return;
     }
 
-    const fetchDetail = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        if (token && borrowerId) {
-          const data = await getBorrowerDetail(borrowerId, token);
-          const bData = data?.data || data;
-          if (isMounted) setBorrower(bData);
-        } else {
-          // Use demo data when offline or in preview mode
-          if (isMounted) setBorrower(demoBorrower);
-        }
-      } catch (err) {
-        console.warn("API fetch fallback to demo borrower data:", err.message);
-        if (isMounted) setBorrower(demoBorrower);
-      } finally {
-        if (isMounted) setLoading(false);
+    try {
+      setLoading(true);
+      setError(null);
+      if (borrowerId) {
+        const data = await getBorrowerDetail(borrowerId, token);
+        const bData = data?.data || data;
+        setBorrower(bData);
+      } else {
+        setBorrower(demoBorrower);
       }
-    };
+    } catch (err) {
+      console.warn("API fetch error for borrower:", err.message);
+      setError(err.message || "Failed to load borrower records from backend API");
+      // Fall back to demo data if in demo environment
+      if (!token || token === "demo_jwt_token_123") {
+        setBorrower(demoBorrower);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchDetail();
-    return () => {
-      isMounted = false;
-    };
   }, [borrowerId, token, initialData]);
 
   if (loading) {
     return (
-      <div className="card text-center" style={{ padding: "4rem 2rem" }}>
-        <Activity size={32} className="spin-icon" color="var(--accent-primary)" />
-        <div style={{ marginTop: "1rem", color: "var(--text-muted)" }}>
-          Loading borrower profile and activity records...
+      <div className="card text-center" style={{ padding: "4rem 2rem", textAlign: "center" }}>
+        <Activity size={36} className="spin-icon" color="var(--accent-primary)" style={{ margin: "0 auto" }} />
+        <div style={{ marginTop: "1rem", fontWeight: 700, color: "var(--text-main)" }}>
+          Loading Borrower Details...
+        </div>
+        <div style={{ marginTop: "0.25rem", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+          Fetching record by ID: <code>{borrowerId}</code>
         </div>
       </div>
     );
@@ -133,13 +137,18 @@ export default function BorrowerDetail({
       <div className="card">
         <div className="alert alert-error">
           <AlertTriangle size={20} />
-          <span>{error}</span>
+          <span>Error loading borrower profile: {error}</span>
         </div>
-        {onBack && (
-          <button className="btn btn-secondary" onClick={onBack}>
-            <ArrowLeft size={16} /> Back to Borrower List
+        <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
+          <button className="btn btn-primary" onClick={fetchDetail}>
+            <RotateCcw size={16} /> Retry Fetch
           </button>
-        )}
+          {onBack && (
+            <button className="btn btn-back" onClick={onBack}>
+              <ArrowLeft size={16} /> Back to Borrower List
+            </button>
+          )}
+        </div>
       </div>
     );
   }
