@@ -19,7 +19,9 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
 const usersRouter = require("./routes/users");
+const borrowersRouter = require("./routes/borrowers");
 app.use("/api/users", usersRouter);
+app.use("/api/borrowers", borrowersRouter);
 
 app.get("/", (req, res) => {
   res.json({ message: "Rural Microfinance API is active" });

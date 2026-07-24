@@ -32,3 +32,19 @@ export const updateProfile = async (profileData, token) => {
   }
   return data;
 };
+
+export const getBorrowerDetail = async (borrowerId, token) => {
+  const response = await fetch(`${API_BASE_URL}/borrowers/${borrowerId}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to fetch borrower details");
+  }
+  return data.data || data;
+};
